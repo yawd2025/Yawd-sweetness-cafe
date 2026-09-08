@@ -1,109 +1,48 @@
 <!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#111111">
-<link rel="manifest" href="/manifest.webmanifest">
-<title>Yawd Sweetness Cafe</title>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111111">
+<link rel="manifest" href="/manifest.webmanifest"><title>Yawd Sweetness Cafe</title>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Arial;background:#f8f4ea;color:#111}.w{max-width:760px;margin:auto;padding-bottom:78px}
-header,.hero{background:#111;color:#fff;padding:18px}.hero{padding:36px 20px}.hero h1{font:700 36px Georgia;margin:8px 0}
-.tag{color:#a17d12;font-size:10px;font-weight:900;letter-spacing:1px}.card,.item{background:#fff;border-radius:18px;padding:15px;margin:12px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px}.grid .item{margin:0}.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.btn,.mini,.plus{border:0;border-radius:999px;font-weight:900}.btn{width:100%;padding:14px;background:#d4af37}.mini{padding:10px 13px}
-.plus{width:38px;height:38px;background:#111;color:#fff;font-size:20px}select,input,textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;margin:5px 0 12px;background:#fff}
-.bottom{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(760px,100%);display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-top:1px solid #ddd}
-.bottom button{border:0;background:#fff;padding:10px 2px}.ov{position:fixed;inset:0;background:#0009;z-index:5;display:flex;align-items:flex-end}
-.dr{width:100%;max-width:760px;margin:auto;background:#f8f4ea;padding:20px;border-radius:24px 24px 0 0;max-height:92vh;overflow:auto}
-.notice{background:#fff0b5;padding:12px;border-radius:10px;margin:12px 0}.svc{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.svc button{padding:12px;border:1px solid #ddd;border-radius:10px}.on{background:#111!important;color:#fff}.thumb{width:100%;height:120px;object-fit:cover;border-radius:12px}
-.muted{font-size:12px;color:#666}.wallet{font-size:42px;font-weight:900;color:#8a6810}.step{display:flex;gap:10px;padding:10px;border-bottom:1px solid #ddd}
-.done,.current{font-weight:900}.order{border-left:5px solid #d4af37}.logo{max-height:58px;max-width:180px}.notify{margin:12px;background:#fff;padding:12px;border-radius:14px}
+*{box-sizing:border-box}body{margin:0;font-family:Arial;background:#f8f4ea;color:#111}.w{max-width:760px;margin:auto;padding-bottom:78px}header,.hero{background:#111;color:#fff;padding:18px}.hero{padding:34px 20px}.hero h1{font:700 36px Georgia;margin:8px 0}.tag{color:#a17d12;font-size:10px;font-weight:900;letter-spacing:1px}
+.card,.item{background:#fff;border-radius:18px;padding:15px;margin:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px}.grid .item{margin:0}.row{display:flex;justify-content:space-between;align-items:center;gap:8px}.btn,.mini,.plus{border:0;border-radius:999px;font-weight:900}.btn{width:100%;padding:14px;background:#d4af37}.mini{padding:10px 13px}.plus{width:38px;height:38px;background:#111;color:#fff;font-size:20px}
+select,input,textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;margin:5px 0 12px;background:#fff}.bottom{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(760px,100%);display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-top:1px solid #ddd}.bottom button{border:0;background:#fff;padding:10px 2px}.ov{position:fixed;inset:0;background:#0009;z-index:20;display:flex;align-items:flex-end}.dr{width:100%;max-width:760px;margin:auto;background:#f8f4ea;padding:20px;border-radius:24px 24px 0 0;max-height:92vh;overflow:auto}.notice{background:#fff0b5;padding:12px;border-radius:10px;margin:12px 0}.svc{display:grid;grid-template-columns:1fr 1fr;gap:8px}.svc button{padding:12px;border:1px solid #ddd;border-radius:10px}.on{background:#111!important;color:#fff}.thumb{width:100%;height:120px;object-fit:cover;border-radius:12px}.muted{font-size:12px;color:#666}.wallet{font-size:42px;font-weight:900;color:#8a6810}.step{display:flex;gap:10px;padding:10px;border-bottom:1px solid #ddd}.done,.current{font-weight:900}.order{border-left:5px solid #d4af37}.logo{max-height:58px;max-width:180px}.cats{display:flex;gap:7px;overflow:auto;padding:12px}.cats button{white-space:nowrap;border:1px solid #ddd;border-radius:999px;padding:9px 12px;background:#fff;font-weight:800}.cats button.on{background:#111;color:#fff}.optGroup{background:#fff;border-radius:14px;padding:13px;margin:10px 0}.checkrow{display:flex;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px solid #eee}.checkrow input{width:auto;margin:0}.selection{font-size:12px;color:#666;margin-top:4px}.priceBig{font-size:24px;font-weight:900}.notify{margin:12px;background:#fff;padding:12px;border-radius:14px}
 @media(max-width:430px){.hero h1{font-size:31px}.thumb{height:100px}}
-</style>
-</head>
-<body>
-<div class="w">
-<header><div id="brand"><b>YAWD SWEETNESS</b><br><small style="color:#d4af37">CAFE • BREWING SMILES DAILY</small></div></header>
-<div id="notifyBox"></div><div id="view"></div></div>
-<nav class="bottom"><button onclick="showMenu()">🏠<br>Menu</button><button onclick="openCart()">🛍️<br>Cart</button><button onclick="showOrders()">📋<br>My Orders</button><button onclick="showRewards()">⭐<br>Rewards</button></nav>
-<div id="modal"></div>
+</style></head><body>
+<div class="w"><header><div id="brand"><b>YAWD SWEETNESS</b><br><small style="color:#d4af37">CAFE • BREWING SMILES DAILY</small></div></header><div id="notifyBox"></div><div id="view"></div></div>
+<nav class="bottom"><button onclick="showMenu()">🏠<br>Menu</button><button onclick="openCart()">🛍️<br>Cart</button><button onclick="showOrders()">📋<br>My Orders</button><button onclick="showRewards()">⭐<br>Rewards</button></nav><div id="modal"></div>
 <script>
 const API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-sweetness';
-let menu=[],cart=[],service='pickup',orders=JSON.parse(localStorage.ysOrders||'[]'),tracker=null,timer=null;
+let menu=[],categories=[],cart=[],service='pickup',orders=JSON.parse(localStorage.ysOrders||'[]'),tracker=null,timer=null,activeCat='all',customizing=null;
 const $=x=>document.getElementById(x),money=n=>'J$'+Number(n||0).toLocaleString();
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function call(a,b){let r=await fetch(API+'?api='+a,{method:b?'POST':'GET',headers:{'content-type':'application/json'},body:b?JSON.stringify(b):null});let d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
-async function boot(){
-  if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
-  let d=await call('menu');menu=d.items||[];
-  if(d.settings&&d.settings.logo_url)$('brand').innerHTML='<img class="logo" src="'+esc(d.settings.logo_url)+'">';
-  renderNotify();
-  showMenu();
-}
-function renderNotify(){
-  if(!('Notification' in window)) return;
-  if(Notification.permission==='default'){
-    $('notifyBox').innerHTML='<div class="notify"><b>🔔 Order updates</b><p class="muted">Allow notifications so we can alert you when your order status changes.</p><button class="mini" onclick="enableNotifications()">Enable notifications</button></div>';
-  } else $('notifyBox').innerHTML='';
-}
+async function boot(){if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});let d=await call('menu');menu=d.items||[];categories=d.categories||[];if(d.settings&&d.settings.logo_url)$('brand').innerHTML='<img class="logo" src="'+esc(d.settings.logo_url)+'">';renderNotify();showMenu()}
+function renderNotify(){if(!('Notification' in window))return;if(Notification.permission==='default')$('notifyBox').innerHTML='<div class="notify"><b>🔔 Order updates</b><p class="muted">Allow notifications for order status changes.</p><button class="mini" onclick="enableNotifications()">Enable notifications</button></div>';else $('notifyBox').innerHTML=''}
 async function enableNotifications(){try{await Notification.requestPermission();renderNotify()}catch{}}
-function sendStatusNotification(orderNo,status){
-  if(!('Notification' in window)||Notification.permission!=='granted')return;
-  const text=info[status]||status;
-  if(navigator.serviceWorker&&navigator.serviceWorker.controller){
-    navigator.serviceWorker.controller.postMessage({type:'notify',title:'Yawd Sweetness • '+orderNo,body:text});
-  } else { try{new Notification('Yawd Sweetness • '+orderNo,{body:text})}catch{} }
-}
-function showMenu(){
- $('view').innerHTML='<section class="hero"><span class="tag">ORDER • EARN • TRACK</span><h1>Brewing smiles daily.</h1><p>Cash ordering with Yawd Rewards.</p></section><div class="card"><label>Ordering from<select id="loc"><option value="linstead">Linstead Courtyard</option><option value="cobbla">Cobbla, Manchester</option></select></label></div><div class="grid">'+menu.map(m=>'<div class="item">'+(m.image_url?'<img class="thumb" src="'+esc(m.image_url)+'">':'🍽️')+'<h3>'+esc(m.name)+'</h3><p class="muted">'+esc(m.description)+'</p><div class="row"><b>'+money(m.price_jmd)+'</b>'+(m.sold_out?'<b>Sold out</b>':'<button class="plus" onclick="add(\''+m.id+'\')">+</button>')+'</div></div>').join('')+'</div>';
-}
-function add(id){let m=menu.find(x=>x.id===id),x=cart.find(x=>x.id===id);if(!m||m.sold_out)return;x?x.q++:cart.push({...m,q:1});alert(m.name+' added')}
-function qty(id,d){let x=cart.find(x=>x.id===id);if(x)x.q+=d;cart=cart.filter(x=>x.q>0);openCart()}
-const subtotal=()=>cart.reduce((s,x)=>s+x.price_jmd*x.q,0);
-function closeM(){$('modal').innerHTML=''}
-function openCart(){
- $('modal').innerHTML='<div class="ov"><div class="dr"><h2>Your order</h2>'+(cart.length?cart.map(x=>'<div class="card row"><div><b>'+esc(x.name)+'</b><br>'+money(x.price_jmd*x.q)+'</div><div><button onclick="qty(\''+x.id+'\',-1)">−</button> '+x.q+' <button onclick="qty(\''+x.id+'\',1)">+</button></div></div>').join('')+'<div class="svc"><button class="'+(service==='pickup'?'on':'')+'" onclick="service=\'pickup\';openCart()">Pickup</button><button class="'+(service==='delivery'?'on':'')+'" onclick="service=\'delivery\';openCart()">Delivery</button></div><div class="notice">Earn <b>J$1 for every J$100 actually paid</b>.</div><h3>'+money(subtotal())+'</h3><button class="btn" onclick="checkout()">Checkout</button>':'<p>Your cart is empty.</p>')+'<button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Close</button></div></div>';
-}
-function checkout(){
- $('modal').innerHTML='<div class="ov"><div class="dr"><h2>Checkout</h2><form onsubmit="place(event)"><input name="name" placeholder="Name" required><input name="phone" placeholder="Phone number" required>'+(service==='delivery'?'<textarea name="address" placeholder="Delivery address" required></textarea>':'')+'<textarea name="notes" placeholder="Special instructions"></textarea><div class="notice"><b>⭐ Yawd Rewards</b><br><br><b>New customer:</b> create any 4-digit PIN you will remember.<br><b>Returning customer:</b> enter the same 4-digit PIN.</div><input name="pin" placeholder="Create or enter 4-digit Loyalty PIN" inputmode="numeric" pattern="[0-9]{4}" maxlength="4"><input name="redeem" type="number" min="0" step="1" placeholder="Reward J$ to use (optional)"><button class="btn">Place order • '+money(subtotal())+'</button></form></div></div>';
-}
-async function place(e){
- e.preventDefault();let f=new FormData(e.target),phone=f.get('phone'),pin=f.get('pin')||'',redeem=Number(f.get('redeem')||0);
- try{
-  let d=await call('create-order',{location_id:$('loc').value,customer_name:f.get('name'),phone,fulfillment:service,delivery_address:f.get('address')||'',notes:f.get('notes')||'',loyalty_pin:pin,redeem_jmd:redeem,items:cart.map(x=>({menu_item_id:x.id,quantity:x.q}))});
-  let o={id:d.id,n:d.order_number,phone,status:d.status,total:d.total_jmd,redeemed:d.loyalty_redeemed_jmd||0,fulfillment:service,items:cart.map(x=>({id:x.id,name:x.name,q:x.q}))};
-  orders.unshift(o);localStorage.ysOrders=JSON.stringify(orders);cart=[];tracker=o;trackView();startTrack();
- }catch(err){alert(err.message)}
-}
+function sendStatusNotification(orderNo,status){if(!('Notification'in window)||Notification.permission!=='granted')return;const text=info[status]||status;if(navigator.serviceWorker&&navigator.serviceWorker.controller)navigator.serviceWorker.controller.postMessage({type:'notify',title:'Yawd Sweetness • '+orderNo,body:text});else try{new Notification('Yawd Sweetness • '+orderNo,{body:text})}catch{}}
+function setCat(id){activeCat=id;showMenu()}
+function showMenu(){let shown=menu.filter(m=>activeCat==='all'||m.category_id===activeCat);$('view').innerHTML='<section class="hero"><span class="tag">ORDER • EARN • TRACK</span><h1>Brewing smiles daily.</h1><p>Choose your location, customize your order and earn Yawd Rewards.</p></section><div class="card"><label>Ordering from<select id="loc"><option value="linstead">Linstead Courtyard</option><option value="cobbla">Cobbla, Manchester</option></select></label></div><div class="cats"><button class="'+(activeCat==='all'?'on':'')+'" onclick="setCat(\'all\')">All</button>'+categories.map(c=>'<button class="'+(activeCat===c.id?'on':'')+'" onclick="setCat(\''+c.id+'\')">'+esc(c.name)+'</button>').join('')+'</div><div class="grid">'+shown.map(m=>'<div class="item">'+(m.image_url?'<img class="thumb" src="'+esc(m.image_url)+'">':'🍽️')+'<div class="muted">'+esc(m.category)+'</div><h3>'+esc(m.name)+'</h3><p class="muted">'+esc(m.description)+'</p><div class="row"><b>'+money(m.price_jmd)+(m.option_groups&&m.option_groups.some(g=>g.values.some(v=>Number(v.price_delta_jmd)>0))?' +':'')+'</b>'+(m.sold_out?'<b>Sold out</b>':'<button class="plus" onclick="beginAdd(\''+m.id+'\')">+</button>')+'</div></div>').join('')+'</div>'}
+function beginAdd(id){let m=menu.find(x=>x.id===id);if(!m||m.sold_out)return;if(!m.option_groups||!m.option_groups.length)return addConfigured(m,[]);customizing={item:m,selected:{}};(m.option_groups||[]).forEach(g=>customizing.selected[g.id]=[]);renderCustomizer()}
+function calcCustom(){let extra=0,ObjectValues=[];Object.values(customizing.selected).forEach(arr=>arr.forEach(id=>{for(const g of customizing.item.option_groups){let v=g.values.find(x=>x.id===id);if(v){extra+=Number(v.price_delta_jmd||0);ObjectValues.push(v)}}}));return {extra,values:ObjectValues}}
+function chooseSingle(gid,val){customizing.selected[gid]=val?[val]:[];renderCustomizer()}
+function chooseMulti(gid,val,on){let a=customizing.selected[gid]||[];if(on&&!a.includes(val))a.push(val);if(!on)a=a.filter(x=>x!==val);let g=customizing.item.option_groups.find(x=>x.id===gid);if(a.length>Number(g.max_select||99)){alert('Maximum '+g.max_select+' choices.');a=a.slice(0,g.max_select)}customizing.selected[gid]=a;renderCustomizer()}
+function renderCustomizer(){let m=customizing.item,c=calcCustom();$('modal').innerHTML='<div class="ov"><div class="dr">'+(m.image_url?'<img class="thumb" style="height:180px" src="'+esc(m.image_url)+'">':'')+'<span class="tag">CUSTOMIZE</span><h2>'+esc(m.name)+'</h2><p>'+esc(m.description)+'</p>'+(m.option_groups||[]).map(g=>'<div class="optGroup"><b>'+esc(g.name)+(g.required?' *':'')+'</b><div class="muted">'+(g.input_type==='multiple'?'Choose up to '+g.max_select:'Choose one')+'</div>'+(g.input_type==='multiple'?g.values.map(v=>'<label class="checkrow"><input type="checkbox" '+((customizing.selected[g.id]||[]).includes(v.id)?'checked':'')+' onchange="chooseMulti(\''+g.id+'\',\''+v.id+'\',this.checked)"><span>'+esc(v.name)+(Number(v.price_delta_jmd)?' • '+(Number(v.price_delta_jmd)>0?'+':'')+money(v.price_delta_jmd):'')+'</span></label>').join(''):'<select onchange="chooseSingle(\''+g.id+'\',this.value)"><option value="">Choose '+esc(g.name)+'</option>'+g.values.map(v=>'<option value="'+v.id+'" '+((customizing.selected[g.id]||[]).includes(v.id)?'selected':'')+'>'+esc(v.name)+(Number(v.price_delta_jmd)?' • '+(Number(v.price_delta_jmd)>0?'+':'')+money(v.price_delta_jmd):'')+'</option>').join('')+'</select>')+'</div>').join('')+'<div class="row"><span>Total each</span><span class="priceBig">'+money(m.price_jmd+c.extra)+'</span></div><button class="btn" onclick="finishAdd()">Add to Order</button><button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Cancel</button></div></div>'}
+function finishAdd(){for(const g of customizing.item.option_groups){let n=(customizing.selected[g.id]||[]).length,min=g.required?Math.max(1,Number(g.min_select||1)):Number(g.min_select||0);if(n<min){alert('Please choose '+g.name+'.');return}}let ids=Object.values(customizing.selected).flat();addConfigured(customizing.item,ids);customizing=null;closeM()}
+function selectionSummary(m,ids){let a=[];(m.option_groups||[]).forEach(g=>{let names=(g.values||[]).filter(v=>ids.includes(v.id)).map(v=>v.name);if(names.length)a.push(g.name+': '+names.join(', '))});return a.join(' • ')}
+function configuredPrice(m,ids){let p=Number(m.price_jmd||0);(m.option_groups||[]).forEach(g=>(g.values||[]).forEach(v=>{if(ids.includes(v.id))p+=Number(v.price_delta_jmd||0)}));return p}
+function addConfigured(m,ids){let key=m.id+'|'+[...ids].sort().join(','),x=cart.find(x=>x.key===key),price=configuredPrice(m,ids),summary=selectionSummary(m,ids);x?x.q++:cart.push({key,id:m.id,name:m.name,price_jmd:price,q:1,selected_value_ids:ids,selection_summary:summary});if(!m.option_groups||!m.option_groups.length)alert(m.name+' added')}
+function qty(key,d){let x=cart.find(x=>x.key===key);if(x)x.q+=d;cart=cart.filter(x=>x.q>0);openCart()}
+const subtotal=()=>cart.reduce((s,x)=>s+x.price_jmd*x.q,0);function closeM(){$('modal').innerHTML=''}
+function openCart(){$('modal').innerHTML='<div class="ov"><div class="dr"><h2>Your order</h2>'+(cart.length?cart.map(x=>'<div class="card"><div class="row"><div><b>'+esc(x.name)+'</b><div class="selection">'+esc(x.selection_summary)+'</div><br>'+money(x.price_jmd*x.q)+'</div><div><button onclick="qty(\''+x.key+'\',-1)">−</button> '+x.q+' <button onclick="qty(\''+x.key+'\',1)">+</button></div></div></div>').join('')+'<div class="svc"><button class="'+(service==='pickup'?'on':'')+'" onclick="service=\'pickup\';openCart()">Pickup</button><button class="'+(service==='delivery'?'on':'')+'" onclick="service=\'delivery\';openCart()">Delivery</button></div><div class="notice">Earn <b>J$1 for every J$100 actually paid</b>.</div><h3>'+money(subtotal())+'</h3><button class="btn" onclick="checkout()">Checkout</button>':'<p>Your cart is empty.</p>')+'<button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Close</button></div></div>'}
+function checkout(){$('modal').innerHTML='<div class="ov"><div class="dr"><h2>Checkout</h2><form onsubmit="place(event)"><input name="name" placeholder="Name" required><input name="phone" placeholder="Phone number" required>'+(service==='delivery'?'<textarea name="address" placeholder="Delivery address" required></textarea>':'')+'<textarea name="notes" placeholder="Special instructions"></textarea><div class="notice"><b>⭐ Yawd Rewards</b><br><br><b>New customer:</b> create any 4-digit PIN.<br><b>Returning customer:</b> enter the same PIN.</div><input name="pin" placeholder="4-digit Loyalty PIN" inputmode="numeric" pattern="[0-9]{4}" maxlength="4"><input name="redeem" type="number" min="0" step="1" placeholder="Reward J$ to use (optional)"><button class="btn">Place order • '+money(subtotal())+'</button></form></div></div>'}
+async function place(e){e.preventDefault();let f=new FormData(e.target),phone=f.get('phone'),pin=f.get('pin')||'',redeem=Number(f.get('redeem')||0);try{let d=await call('create-order',{location_id:$('loc').value,customer_name:f.get('name'),phone,fulfillment:service,delivery_address:f.get('address')||'',notes:f.get('notes')||'',loyalty_pin:pin,redeem_jmd:redeem,items:cart.map(x=>({menu_item_id:x.id,quantity:x.q,selected_value_ids:x.selected_value_ids}))});let o={id:d.id,n:d.order_number,phone,status:d.status,total:d.total_jmd,fulfillment:service,items:cart.map(x=>({id:x.id,name:x.name,q:x.q,selected_value_ids:x.selected_value_ids,selection_summary:x.selection_summary}))};orders.unshift(o);localStorage.ysOrders=JSON.stringify(orders);cart=[];tracker=o;trackView();startTrack()}catch(err){alert(err.message)}}
 const info={received:'Order received',preparing:'Preparing your order',ready:'Your order is ready!',out_for_delivery:'Out for delivery',completed:'Order completed',cancelled:'Order cancelled'};
-function trackView(){
- let flow=tracker.fulfillment==='delivery'?['received','preparing','ready','out_for_delivery','completed']:['received','preparing','ready','completed'],ix=flow.indexOf(tracker.status);
- $('modal').innerHTML='<div class="ov"><div class="dr"><span class="tag">LIVE TRACKING</span><h1>'+esc(tracker.n)+'</h1><h2>'+esc(info[tracker.status]||tracker.status)+'</h2>'+flow.map((s,i)=>'<div class="step '+(i<ix?'done':i===ix?'current':'')+'">'+(i<ix?'✅':'○')+' '+esc(info[s])+'</div>').join('')+'<div class="notice">Cash due: <b>'+money(tracker.total)+'</b></div><button class="btn" onclick="refreshTrack()">Check now</button><button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Close</button></div></div>';
-}
-async function refreshTrack(){
- if(!tracker)return;
- try{
-  let old=tracker.status,d=await call('track-order',{id:tracker.id,phone:tracker.phone});
-  tracker.status=d.status;tracker.total=d.total_jmd;
-  let o=orders.find(x=>x.id===tracker.id);if(o)Object.assign(o,tracker);
-  localStorage.ysOrders=JSON.stringify(orders);
-  if(old!==tracker.status)sendStatusNotification(tracker.n,tracker.status);
-  trackView();
-  if(['completed','cancelled'].includes(tracker.status)&&timer){clearInterval(timer);timer=null}
- }catch{}
-}
+function trackView(){let flow=tracker.fulfillment==='delivery'?['received','preparing','ready','out_for_delivery','completed']:['received','preparing','ready','completed'],ix=flow.indexOf(tracker.status);$('modal').innerHTML='<div class="ov"><div class="dr"><span class="tag">LIVE TRACKING</span><h1>'+esc(tracker.n)+'</h1><h2>'+esc(info[tracker.status]||tracker.status)+'</h2>'+flow.map((s,i)=>'<div class="step '+(i<ix?'done':i===ix?'current':'')+'">'+(i<ix?'✅':'○')+' '+esc(info[s])+'</div>').join('')+'<div class="notice">Cash due: <b>'+money(tracker.total)+'</b></div><button class="btn" onclick="refreshTrack()">Check now</button><button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Close</button></div></div>'}
+async function refreshTrack(){if(!tracker)return;try{let old=tracker.status,d=await call('track-order',{id:tracker.id,phone:tracker.phone});tracker.status=d.status;tracker.total=d.total_jmd;let o=orders.find(x=>x.id===tracker.id);if(o)Object.assign(o,tracker);localStorage.ysOrders=JSON.stringify(orders);if(old!==tracker.status)sendStatusNotification(tracker.n,tracker.status);trackView();if(['completed','cancelled'].includes(tracker.status)&&timer){clearInterval(timer);timer=null}}catch{}}
 function startTrack(){if(timer)clearInterval(timer);timer=setInterval(refreshTrack,10000)}
-function showOrders(){
- $('view').innerHTML='<section class="hero"><span class="tag">MY ORDERS</span><h1>Order history</h1></section>'+(!orders.length?'<div class="card">No saved orders yet.</div>':orders.map(o=>'<div class="card order"><div class="row"><b>'+esc(o.n)+'</b><span>'+esc(o.status)+'</span></div><p>'+money(o.total)+'</p><div class="row"><button class="mini" onclick="trackSaved(\''+o.id+'\')">Track</button><button class="mini" onclick="reorder(\''+o.id+'\')">🔁 Reorder</button></div></div>').join(''));
-}
+function showOrders(){$('view').innerHTML='<section class="hero"><span class="tag">MY ORDERS</span><h1>Order history</h1></section>'+(!orders.length?'<div class="card">No saved orders yet.</div>':orders.map(o=>'<div class="card order"><div class="row"><b>'+esc(o.n)+'</b><span>'+esc(o.status)+'</span></div><p>'+money(o.total)+'</p><div class="row"><button class="mini" onclick="trackSaved(\''+o.id+'\')">Track</button><button class="mini" onclick="reorder(\''+o.id+'\')">🔁 Reorder</button></div></div>').join(''))}
 function trackSaved(id){tracker=orders.find(x=>x.id===id);if(tracker){trackView();startTrack()}}
-function reorder(id){let o=orders.find(x=>x.id===id);cart=[];(o?.items||[]).forEach(i=>{let m=menu.find(x=>x.id===i.id);if(m&&!m.sold_out)cart.push({...m,q:i.q})});openCart()}
-function showRewards(){
- $('view').innerHTML='<section class="hero"><span class="tag">YAWD REWARDS</span><h1>Your rewards wallet</h1><p>J$1 back for every J$100 actually paid.</p></section><div class="card"><form onsubmit="checkRewards(event)"><input name="phone" placeholder="Phone number" required><input name="pin" placeholder="Your 4-digit Loyalty PIN" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required><button class="btn">Check Balance</button></form></div><div id="rewardResult"></div>';
-}
+function reorder(id){let o=orders.find(x=>x.id===id);cart=[];(o?.items||[]).forEach(i=>{let m=menu.find(x=>x.id===i.id);if(m&&!m.sold_out)addConfigured(m,i.selected_value_ids||[])});openCart()}
+function showRewards(){$('view').innerHTML='<section class="hero"><span class="tag">YAWD REWARDS</span><h1>Your rewards wallet</h1><p>J$1 back for every J$100 actually paid.</p></section><div class="card"><form onsubmit="checkRewards(event)"><input name="phone" placeholder="Phone number" required><input name="pin" placeholder="Your 4-digit Loyalty PIN" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required><button class="btn">Check Balance</button></form></div><div id="rewardResult"></div>'}
 async function checkRewards(e){e.preventDefault();let f=new FormData(e.target);try{let d=await call('loyalty-balance',{phone:f.get('phone'),pin:f.get('pin')});$('rewardResult').innerHTML=d.exists?'<div class="card"><span class="tag">AVAILABLE</span><div class="wallet">'+money(d.balance_jmd)+'</div><p>Lifetime earned: <b>'+money(d.lifetime_earned_jmd)+'</b></p></div>':'<div class="card"><h3>No matching rewards account</h3></div>'}catch(err){alert(err.message)}}
 boot();
-</script>
-</body></html>
+</script></body></html>
