@@ -1,0 +1,72 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Yawd Sweetness Admin</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial;background:#f6f2e8}.w{max-width:900px;margin:auto}.main{padding:14px}
+header{background:#111;color:#fff;padding:16px}.card{background:#fff;padding:15px;border-radius:16px;margin:12px 0}.row{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.tabs{display:flex;gap:8px;overflow:auto}.btn,.mini{border:0;border-radius:999px;font-weight:800}.btn{width:100%;padding:14px;background:#d4af37}.mini{padding:10px 12px}
+input,textarea{width:100%;padding:11px;border:1px solid #ddd;border-radius:10px;margin:5px 0 10px}.order{border-left:5px solid #d4af37}.actions{display:flex;gap:6px;flex-wrap:wrap}.muted{font-size:12px;color:#666}
+.preview{width:100%;max-width:260px;height:160px;object-fit:cover;border-radius:12px;border:1px solid #ddd;margin:8px 0}.uploading{opacity:.55;pointer-events:none}.photoLabel{font-weight:800;display:block;margin-top:8px}
+</style></head>
+<body><header><div class="w"><b>YAWD SWEETNESS</b><br><small>STAFF / ADMIN</small></div></header><main class="w main" id="root"></main>
+<script>
+const API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-sweetness';
+let token=localStorage.ysStaffToken||'',me=null,orders=[],menuData={items:[]},view='orders';
+const $=x=>document.getElementById(x),money=n=>'J$'+Number(n||0).toLocaleString();
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function call(a,b){let r=await fetch(API+'?api='+a,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b||{})});let d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
+async function boot(){if(token){try{me=await call('staff-login',{token});return loadOrders()}catch{token='';localStorage.removeItem('ysStaffToken')}}render()}
+async function login(e){e.preventDefault();token=new FormData(e.target).get('token').trim();try{me=await call('staff-login',{token});localStorage.ysStaffToken=token;loadOrders()}catch(err){alert(err.message)}}
+function logout(){localStorage.removeItem('ysStaffToken');token='';me=null;render()}
+async function loadOrders(){orders=await call('staff-orders',{token});view='orders';render()}
+async function setStatus(id,status){try{let d=await call('staff-update',{token,id,status});if(status==='completed'&&d.earned_jmd>0)alert('Customer earned '+money(d.earned_jmd)+' rewards.');loadOrders()}catch(err){alert(err.message)}}
+async function loadMenu(){menuData=await call('staff-menu',{token});view='menu';render()}
+function loyaltyPage(){view='loyalty';render()}
+async function findLoyalty(e){e.preventDefault();let phone=new FormData(e.target).get('phone');try{let d=await call('staff-loyalty-find',{token,phone});$('loyaltyResult').innerHTML=d.exists?'<div class="card"><h3>Rewards account found</h3><p><b>Phone:</b> '+esc(d.phone)+'</p><p><b>Balance:</b> '+money(d.balance_jmd)+'<br><b>Lifetime earned:</b> '+money(d.lifetime_earned_jmd)+'</p><form onsubmit="resetPin(event,\''+esc(d.phone)+'\')"><label>New 4-digit PIN<input name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label><button class="btn">Reset Loyalty PIN</button></form></div>':'<div class="card">No rewards account found for that phone number.</div>'}catch(err){alert(err.message)}}
+async function resetPin(e,phone){e.preventDefault();let pin=new FormData(e.target).get('pin');if(!confirm('Reset this customer loyalty PIN?'))return;try{await call('staff-loyalty-reset-pin',{token,phone,new_pin:pin});alert('PIN reset.')}catch(err){alert(err.message)}}
+async function fileToBase64(file){return new Promise((resolve,reject)=>{let r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(file)})}
+async function uploadImage(file){
+ if(!file)return '';
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Please choose a JPG, PNG or WEBP photo.');
+ if(file.size>3*1024*1024)throw Error('Image is too large. Maximum 3 MB.');
+ let data_base64=await fileToBase64(file);
+ let d=await call('staff-upload',{token,mime:file.type,data_base64,kind:'product'});
+ return d.url;
+}
+function preview(input,id){let f=input.files&&input.files[0],img=$(id);if(f&&img){img.src=URL.createObjectURL(f);img.style.display='block'}}
+async function saveProduct(e,id){
+ e.preventDefault();let form=e.target,f=new FormData(form);
+ try{
+  form.classList.add('uploading');
+  let image_url=form.dataset.image||'';
+  let file=f.get('image');if(file&&file.size)image_url=await uploadImage(file);
+  await call('staff-menu-update',{token,id,name:f.get('name'),category:f.get('category'),description:f.get('description'),price_jmd:Number(f.get('price')),image_url,sold_out:f.get('sold')==='on',active:true});
+  await loadMenu();alert('Product saved.');
+ }catch(err){alert(err.message)}finally{form.classList.remove('uploading')}
+}
+async function addProduct(e){
+ e.preventDefault();let form=e.target,f=new FormData(form);
+ try{
+  form.classList.add('uploading');
+  let image_url='',file=f.get('image');if(file&&file.size)image_url=await uploadImage(file);
+  await call('staff-menu-create',{token,name:f.get('name'),category:f.get('category'),description:f.get('description'),price_jmd:Number(f.get('price')),image_url});
+  await loadMenu();alert('Product added.');
+ }catch(err){alert(err.message)}finally{form.classList.remove('uploading')}
+}
+function render(){
+ let r=$('root');
+ if(!me){r.innerHTML='<div class="card"><h2>Staff sign in</h2><form onsubmit="login(event)"><input name="token" type="password" placeholder="Access code" required><button class="btn">Sign in</button></form></div>';return}
+ let nav='<div class="row"><div><b>'+esc(me.label)+'</b><div class="muted">'+(me.is_admin?'Owner/Admin':'Location staff')+'</div></div><button class="mini" onclick="logout()">Logout</button></div><div class="tabs"><button class="mini" onclick="loadOrders()">Orders</button>'+(me.is_admin?'<button class="mini" onclick="loadMenu()">Menu Manager</button><button class="mini" onclick="loyaltyPage()">⭐ Loyalty Accounts</button>':'')+'</div>';
+ if(view==='orders'){
+  r.innerHTML=nav+'<h2>Incoming orders</h2>'+(!orders.length?'<div class="card">No orders yet.</div>':orders.map(o=>'<div class="card order"><div class="row"><b>YS'+o.order_number+'</b><b>'+esc(o.status)+'</b></div><p><b>'+esc(o.customer_name)+'</b> • '+esc(o.phone)+'<br>'+esc(o.location_id)+' • '+esc(o.fulfillment)+'</p><p>'+o.order_items.map(i=>i.quantity+'× '+esc(i.item_name)).join('<br>')+'</p><p>Cash due: <b>'+money(o.total_jmd)+'</b></p><div class="actions"><button onclick="setStatus(\''+o.id+'\',\'preparing\')">Preparing</button><button onclick="setStatus(\''+o.id+'\',\'ready\')">Ready</button>'+(o.fulfillment==='delivery'?'<button onclick="setStatus(\''+o.id+'\',\'out_for_delivery\')">Out for delivery</button>':'')+'<button onclick="setStatus(\''+o.id+'\',\'completed\')">Completed</button></div></div>').join(''));return;
+ }
+ if(view==='loyalty'){r.innerHTML=nav+'<div class="card"><h2>Loyalty PIN Help</h2><form onsubmit="findLoyalty(event)"><input name="phone" placeholder="Customer phone number" required><button class="btn">Find Rewards Account</button></form></div><div id="loyaltyResult"></div>';return}
+ r.innerHTML=nav+
+ '<div class="card"><h2>Add product</h2><form onsubmit="addProduct(event)"><input name="name" placeholder="Product name" required><input name="category" placeholder="Category" required><textarea name="description" placeholder="Description"></textarea><input name="price" type="number" min="0" placeholder="Price JMD" required><label class="photoLabel">📷 Product photo</label><input name="image" type="file" accept="image/jpeg,image/png,image/webp"><div class="muted">JPG, PNG or WEBP • Maximum 3 MB</div><button class="btn">Add Product</button></form></div>'+
+ menuData.items.map((m,i)=>'<form class="card" data-image="'+esc(m.image_url||'')+'" onsubmit="saveProduct(event,\''+m.id+'\')">'+
+ (m.image_url?'<img id="p'+i+'" class="preview" src="'+esc(m.image_url)+'">':'<img id="p'+i+'" class="preview" style="display:none">')+
+ '<input name="name" value="'+esc(m.name)+'"><input name="category" value="'+esc(m.category)+'"><textarea name="description">'+esc(m.description)+'</textarea><input name="price" type="number" value="'+m.price_jmd+'">'+
+ '<label class="photoLabel">📷 Change product photo</label><input name="image" type="file" accept="image/jpeg,image/png,image/webp" onchange="preview(this,\'p'+i+'\')">'+
+ '<label><input style="width:auto" name="sold" type="checkbox" '+(m.sold_out?'checked':'')+'> Sold out</label><button class="btn">Save</button></form>').join('');
+}
+boot();
+</script></body></html>

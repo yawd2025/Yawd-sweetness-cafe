@@ -1,0 +1,9 @@
+{
+  "name":"Yawd Sweetness Cafe",
+  "short_name":"Yawd Sweetness",
+  "start_url":"/",
+  "display":"standalone",
+  "background_color":"#f8f4ea",
+  "theme_color":"#111111",
+  "description":"Yawd Sweetness Cafe online ordering and rewards."
+}
