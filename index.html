@@ -5,6 +5,17 @@
 *{box-sizing:border-box}body{margin:0;font-family:Arial;background:#f8f4ea;color:#111}.w{max-width:760px;margin:auto;padding-bottom:78px}header,.hero{background:#111;color:#fff;padding:18px}.hero{padding:34px 20px}.hero h1{font:700 36px Georgia;margin:8px 0}.tag{color:#a17d12;font-size:10px;font-weight:900;letter-spacing:1px}
 .card,.item{background:#fff;border-radius:18px;padding:15px;margin:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px}.grid .item{margin:0}.row{display:flex;justify-content:space-between;align-items:center;gap:8px}.btn,.mini,.plus{border:0;border-radius:999px;font-weight:900}.btn{width:100%;padding:14px;background:#d4af37}.mini{padding:10px 13px}.plus{width:38px;height:38px;background:#111;color:#fff;font-size:20px}
 select,input,textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;margin:5px 0 12px;background:#fff}.bottom{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(760px,100%);display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-top:1px solid #ddd}.bottom button{border:0;background:#fff;padding:10px 2px}.ov{position:fixed;inset:0;background:#0009;z-index:20;display:flex;align-items:flex-end}.dr{width:100%;max-width:760px;margin:auto;background:#f8f4ea;padding:20px;border-radius:24px 24px 0 0;max-height:92vh;overflow:auto}.notice{background:#fff0b5;padding:12px;border-radius:10px;margin:12px 0}.svc{display:grid;grid-template-columns:1fr 1fr;gap:8px}.svc button{padding:12px;border:1px solid #ddd;border-radius:10px}.on{background:#111!important;color:#fff}.thumb{width:100%;height:120px;object-fit:cover;border-radius:12px}.muted{font-size:12px;color:#666}.wallet{font-size:42px;font-weight:900;color:#8a6810}.step{display:flex;gap:10px;padding:10px;border-bottom:1px solid #ddd}.done,.current{font-weight:900}.order{border-left:5px solid #d4af37}.logo{max-height:58px;max-width:180px}.cats{display:flex;gap:7px;overflow:auto;padding:12px}.cats button{white-space:nowrap;border:1px solid #ddd;border-radius:999px;padding:9px 12px;background:#fff;font-weight:800}.cats button.on{background:#111;color:#fff}.optGroup{background:#fff;border-radius:14px;padding:13px;margin:10px 0}.checkrow{display:flex;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px solid #eee}.checkrow input{width:auto;margin:0}.selection{font-size:12px;color:#666;margin-top:4px}.priceBig{font-size:24px;font-weight:900}.notify{margin:12px;background:#fff;padding:12px;border-radius:14px}
+.cartItem{background:#fff;border-radius:16px;padding:14px;margin:10px 0;border:1px solid #eee}
+.cartTitle{font-size:17px;font-weight:900}
+.cartMeta{font-size:12px;color:#666;line-height:1.45;margin-top:5px}
+.cartActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.cartActions button{border:0;border-radius:999px;padding:8px 11px;font-weight:800}
+.editBtn{background:#e8f7e8}.removeBtn{background:#ffe3e3}
+.qtyBox{display:flex;align-items:center;gap:8px}
+.qtyBox button{border:0;border-radius:50%;width:34px;height:34px;font-size:18px;font-weight:900}
+.summaryBox{background:#111;color:#fff;border-radius:16px;padding:15px;margin:14px 0}
+.summaryRow{display:flex;justify-content:space-between;gap:12px;padding:5px 0}
+.summaryTotal{font-size:24px;font-weight:900;color:#d4af37}
 @media(max-width:430px){.hero h1{font-size:31px}.thumb{height:100px}}
 </style></head><body>
 <div class="w"><header><div id="brand"><b>YAWD SWEETNESS</b><br><small style="color:#d4af37">CAFE • BREWING SMILES DAILY</small></div></header><div id="notifyBox"></div><div id="view"></div></div>
@@ -25,14 +36,85 @@ function beginAdd(id){let m=menu.find(x=>x.id===id);if(!m||m.sold_out)return;if(
 function calcCustom(){let extra=0,ObjectValues=[];Object.values(customizing.selected).forEach(arr=>arr.forEach(id=>{for(const g of customizing.item.option_groups){let v=g.values.find(x=>x.id===id);if(v){extra+=Number(v.price_delta_jmd||0);ObjectValues.push(v)}}}));return {extra,values:ObjectValues}}
 function chooseSingle(gid,val){customizing.selected[gid]=val?[val]:[];renderCustomizer()}
 function chooseMulti(gid,val,on){let a=customizing.selected[gid]||[];if(on&&!a.includes(val))a.push(val);if(!on)a=a.filter(x=>x!==val);let g=customizing.item.option_groups.find(x=>x.id===gid);if(a.length>Number(g.max_select||99)){alert('Maximum '+g.max_select+' choices.');a=a.slice(0,g.max_select)}customizing.selected[gid]=a;renderCustomizer()}
-function renderCustomizer(){let m=customizing.item,c=calcCustom();$('modal').innerHTML='<div class="ov"><div class="dr">'+(m.image_url?'<img class="thumb" style="height:180px" src="'+esc(m.image_url)+'">':'')+'<span class="tag">CUSTOMIZE</span><h2>'+esc(m.name)+'</h2><p>'+esc(m.description)+'</p>'+(m.option_groups||[]).map(g=>'<div class="optGroup"><b>'+esc(g.name)+(g.required?' *':'')+'</b><div class="muted">'+(g.input_type==='multiple'?'Choose up to '+g.max_select:'Choose one')+'</div>'+(g.input_type==='multiple'?g.values.map(v=>'<label class="checkrow"><input type="checkbox" '+((customizing.selected[g.id]||[]).includes(v.id)?'checked':'')+' onchange="chooseMulti(\''+g.id+'\',\''+v.id+'\',this.checked)"><span>'+esc(v.name)+(Number(v.price_delta_jmd)?' • '+(Number(v.price_delta_jmd)>0?'+':'')+money(v.price_delta_jmd):'')+'</span></label>').join(''):'<select onchange="chooseSingle(\''+g.id+'\',this.value)"><option value="">Choose '+esc(g.name)+'</option>'+g.values.map(v=>'<option value="'+v.id+'" '+((customizing.selected[g.id]||[]).includes(v.id)?'selected':'')+'>'+esc(v.name)+(Number(v.price_delta_jmd)?' • '+(Number(v.price_delta_jmd)>0?'+':'')+money(v.price_delta_jmd):'')+'</option>').join('')+'</select>')+'</div>').join('')+'<div class="row"><span>Total each</span><span class="priceBig">'+money(m.price_jmd+c.extra)+'</span></div><button class="btn" onclick="finishAdd()">Add to Order</button><button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Cancel</button></div></div>'}
-function finishAdd(){for(const g of customizing.item.option_groups){let n=(customizing.selected[g.id]||[]).length,min=g.required?Math.max(1,Number(g.min_select||1)):Number(g.min_select||0);if(n<min){alert('Please choose '+g.name+'.');return}}let ids=Object.values(customizing.selected).flat();addConfigured(customizing.item,ids);customizing=null;closeM()}
+function renderCustomizer(){let m=customizing.item,c=calcCustom();$('modal').innerHTML='<div class="ov"><div class="dr">'+(m.image_url?'<img class="thumb" style="height:180px" src="'+esc(m.image_url)+'">':'')+'<span class="tag">CUSTOMIZE</span><h2>'+esc(m.name)+'</h2><p>'+esc(m.description)+'</p>'+(m.option_groups||[]).map(g=>'<div class="optGroup"><b>'+esc(g.name)+(g.required?' *':'')+'</b><div class="muted">'+(g.input_type==='multiple'?'Choose up to '+g.max_select:'Choose one')+'</div>'+(g.input_type==='multiple'?g.values.map(v=>'<label class="checkrow"><input type="checkbox" '+((customizing.selected[g.id]||[]).includes(v.id)?'checked':'')+' onchange="chooseMulti(\''+g.id+'\',\''+v.id+'\',this.checked)"><span>'+esc(v.name)+(Number(v.price_delta_jmd)?' • '+(Number(v.price_delta_jmd)>0?'+':'')+money(v.price_delta_jmd):'')+'</span></label>').join(''):'<select onchange="chooseSingle(\''+g.id+'\',this.value)"><option value="">Choose '+esc(g.name)+'</option>'+g.values.map(v=>'<option value="'+v.id+'" '+((customizing.selected[g.id]||[]).includes(v.id)?'selected':'')+'>'+esc(v.name)+(Number(v.price_delta_jmd)?' • '+(Number(v.price_delta_jmd)>0?'+':'')+money(v.price_delta_jmd):'')+'</option>').join('')+'</select>')+'</div>').join('')+'<div class="row"><span>Total each</span><span class="priceBig">'+money(m.price_jmd+c.extra)+'</span></div><button class="btn" onclick="finishAdd()">Add to Order</button><button class="btn" style="background:#ddd;margin-top:8px" onclick="cancelCustomizer()">Cancel</button></div></div>'}
+function finishAdd(){
+  for(const g of customizing.item.option_groups){
+    let n=(customizing.selected[g.id]||[]).length,min=g.required?Math.max(1,Number(g.min_select||1)):Number(g.min_select||0);
+    if(n<min){alert('Please choose '+g.name+'.');return}
+  }
+  let ids=Object.values(customizing.selected).flat(),m=customizing.item;
+  if(customizing.editing)cart=cart.filter(x=>x.key!==customizing.editing.oldKey);
+  let key=m.id+'|'+[...ids].sort().join(','),price=configuredPrice(m,ids),summary=selectionSummary(m,ids);
+  let existing=cart.find(x=>x.key===key),q=customizing.editing?customizing.editing.qty:1;
+  if(existing)existing.q=Math.min(20,existing.q+q);
+  else cart.push({key,id:m.id,name:m.name,price_jmd:price,q,selected_value_ids:ids,selection_summary:summary});
+  customizing=null;openCart()
+}
 function selectionSummary(m,ids){let a=[];(m.option_groups||[]).forEach(g=>{let names=(g.values||[]).filter(v=>ids.includes(v.id)).map(v=>v.name);if(names.length)a.push(g.name+': '+names.join(', '))});return a.join(' • ')}
 function configuredPrice(m,ids){let p=Number(m.price_jmd||0);(m.option_groups||[]).forEach(g=>(g.values||[]).forEach(v=>{if(ids.includes(v.id))p+=Number(v.price_delta_jmd||0)}));return p}
 function addConfigured(m,ids){let key=m.id+'|'+[...ids].sort().join(','),x=cart.find(x=>x.key===key),price=configuredPrice(m,ids),summary=selectionSummary(m,ids);x?x.q++:cart.push({key,id:m.id,name:m.name,price_jmd:price,q:1,selected_value_ids:ids,selection_summary:summary});if(!m.option_groups||!m.option_groups.length)alert(m.name+' added')}
-function qty(key,d){let x=cart.find(x=>x.key===key);if(x)x.q+=d;cart=cart.filter(x=>x.q>0);openCart()}
-const subtotal=()=>cart.reduce((s,x)=>s+x.price_jmd*x.q,0);function closeM(){$('modal').innerHTML=''}
-function openCart(){$('modal').innerHTML='<div class="ov"><div class="dr"><h2>Your order</h2>'+(cart.length?cart.map(x=>'<div class="card"><div class="row"><div><b>'+esc(x.name)+'</b><div class="selection">'+esc(x.selection_summary)+'</div><br>'+money(x.price_jmd*x.q)+'</div><div><button onclick="qty(\''+x.key+'\',-1)">−</button> '+x.q+' <button onclick="qty(\''+x.key+'\',1)">+</button></div></div></div>').join('')+'<div class="svc"><button class="'+(service==='pickup'?'on':'')+'" onclick="service=\'pickup\';openCart()">Pickup</button><button class="'+(service==='delivery'?'on':'')+'" onclick="service=\'delivery\';openCart()">Delivery</button></div><div class="notice">Earn <b>J$1 for every J$100 actually paid</b>.</div><h3>'+money(subtotal())+'</h3><button class="btn" onclick="checkout()">Checkout</button>':'<p>Your cart is empty.</p>')+'<button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Close</button></div></div>'}
+function qty(key,d){let x=cart.find(x=>x.key===key);if(x)x.q=Math.max(1,Math.min(20,x.q+d));openCart()}
+function removeCartItem(key){if(!confirm('Remove this item from your order?'))return;cart=cart.filter(x=>x.key!==key);openCart()}
+function editCartItem(key){
+  let x=cart.find(x=>x.key===key);if(!x)return;
+  let m=menu.find(v=>v.id===x.id);if(!m)return alert('This menu item is no longer available.');
+  if(!m.option_groups||!m.option_groups.length)return alert('This item has no options to edit.');
+  customizing={item:m,selected:{},editing:{oldKey:key,qty:x.q}};
+  (m.option_groups||[]).forEach(g=>customizing.selected[g.id]=[]);
+  (x.selected_value_ids||[]).forEach(id=>{
+    for(const g of (m.option_groups||[])){
+      if((g.values||[]).some(v=>v.id===id))customizing.selected[g.id].push(id);
+    }
+  });
+  renderCustomizer();
+}
+const subtotal=()=>cart.reduce((s,x)=>s+x.price_jmd*x.q,0);
+function closeM(){$('modal').innerHTML=''}
+function cancelCustomizer(){customizing=null;openCart()}
+function openCart(){
+  const totalQty=cart.reduce((s,x)=>s+x.q,0),sub=subtotal();
+  let itemsHtml=cart.map(x=>{
+    const meta=x.selection_summary?esc(x.selection_summary).replace(/ • /g,'<br>'):'';
+    return `<div class="cartItem">
+      <div class="row">
+        <div>
+          <div class="cartTitle">${esc(x.name)}</div>
+          ${meta?`<div class="cartMeta">${meta}</div>`:''}
+          <div class="cartMeta">Each: ${money(x.price_jmd)}</div>
+        </div>
+        <b>${money(x.price_jmd*x.q)}</b>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="qtyBox">
+          <button onclick="qty('${x.key}',-1)">−</button>
+          <b>${x.q}</b>
+          <button onclick="qty('${x.key}',1)">+</button>
+        </div>
+        <div class="cartActions">
+          ${(x.selected_value_ids||[]).length?`<button class="editBtn" onclick="editCartItem('${x.key}')">✏️ Edit options</button>`:''}
+          <button class="removeBtn" onclick="removeCartItem('${x.key}')">🗑 Remove</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  $('modal').innerHTML=`<div class="ov"><div class="dr">
+    <span class="tag">YOUR CART</span><h2>Your order</h2>
+    ${cart.length?itemsHtml:'<div class="card"><h3>Your cart is empty.</h3><p class="muted">Add something sweet from the menu to get started.</p></div>'}
+    ${cart.length?`
+      <div class="svc">
+        <button class="${service==='pickup'?'on':''}" onclick="service='pickup';openCart()">Pickup</button>
+        <button class="${service==='delivery'?'on':''}" onclick="service='delivery';openCart()">Delivery</button>
+      </div>
+      <div class="summaryBox">
+        <div class="summaryRow"><span>Items</span><b>${totalQty}</b></div>
+        <div class="summaryRow"><span>Subtotal</span><b>${money(sub)}</b></div>
+        <div class="summaryRow"><span>Rewards</span><span>Earn J$1 per J$100 paid</span></div>
+        <div class="summaryRow"><span>Total before rewards</span><span class="summaryTotal">${money(sub)}</span></div>
+      </div>
+      <button class="btn" onclick="checkout()">Continue to Checkout</button>`:''}
+    <button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Continue Shopping</button>
+  </div></div>`;
+}
 function checkout(){$('modal').innerHTML='<div class="ov"><div class="dr"><h2>Checkout</h2><form onsubmit="place(event)"><input name="name" placeholder="Name" required><input name="phone" placeholder="Phone number" required>'+(service==='delivery'?'<textarea name="address" placeholder="Delivery address" required></textarea>':'')+'<textarea name="notes" placeholder="Special instructions"></textarea><div class="notice"><b>⭐ Yawd Rewards</b><br><br><b>New customer:</b> create any 4-digit PIN.<br><b>Returning customer:</b> enter the same PIN.</div><input name="pin" placeholder="4-digit Loyalty PIN" inputmode="numeric" pattern="[0-9]{4}" maxlength="4"><input name="redeem" type="number" min="0" step="1" placeholder="Reward J$ to use (optional)"><button class="btn">Place order • '+money(subtotal())+'</button></form></div></div>'}
 async function place(e){e.preventDefault();let f=new FormData(e.target),phone=f.get('phone'),pin=f.get('pin')||'',redeem=Number(f.get('redeem')||0);try{let d=await call('create-order',{location_id:$('loc').value,customer_name:f.get('name'),phone,fulfillment:service,delivery_address:f.get('address')||'',notes:f.get('notes')||'',loyalty_pin:pin,redeem_jmd:redeem,items:cart.map(x=>({menu_item_id:x.id,quantity:x.q,selected_value_ids:x.selected_value_ids}))});let o={id:d.id,n:d.order_number,phone,status:d.status,total:d.total_jmd,fulfillment:service,items:cart.map(x=>({id:x.id,name:x.name,q:x.q,selected_value_ids:x.selected_value_ids,selection_summary:x.selection_summary}))};orders.unshift(o);localStorage.ysOrders=JSON.stringify(orders);cart=[];tracker=o;trackView();startTrack()}catch(err){alert(err.message)}}
 const info={received:'Order received',preparing:'Preparing your order',ready:'Your order is ready!',out_for_delivery:'Out for delivery',completed:'Order completed',cancelled:'Order cancelled'};
