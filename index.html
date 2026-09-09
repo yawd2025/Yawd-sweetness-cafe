@@ -16,6 +16,14 @@ select,input,textarea{width:100%;padding:12px;border:1px solid #ddd;border-radiu
 .summaryBox{background:#111;color:#fff;border-radius:16px;padding:15px;margin:14px 0}
 .summaryRow{display:flex;justify-content:space-between;gap:12px;padding:5px 0}
 .summaryTotal{font-size:24px;font-weight:900;color:#d4af37}
+.checkoutSection{background:#fff;border-radius:16px;padding:14px;margin:12px 0}
+.checkoutSection h3{margin:0 0 10px}
+.checkoutLabel{font-size:12px;font-weight:800;color:#555;display:block;margin-top:8px}
+.reviewItem{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #eee}
+.reviewItem:last-child{border-bottom:0}
+.confirmBox{background:#111;color:#fff;border-radius:18px;padding:18px;text-align:center}
+.confirmNo{font-size:30px;font-weight:900;color:#d4af37;margin:8px 0}
+.smallNote{font-size:12px;color:#666;line-height:1.45}
 @media(max-width:430px){.hero h1{font-size:31px}.thumb{height:100px}}
 </style></head><body>
 <div class="w"><header><div id="brand"><b>YAWD SWEETNESS</b><br><small style="color:#d4af37">CAFE • BREWING SMILES DAILY</small></div></header><div id="notifyBox"></div><div id="view"></div></div>
@@ -115,8 +123,110 @@ function openCart(){
     <button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Continue Shopping</button>
   </div></div>`;
 }
-function checkout(){$('modal').innerHTML='<div class="ov"><div class="dr"><h2>Checkout</h2><form onsubmit="place(event)"><input name="name" placeholder="Name" required><input name="phone" placeholder="Phone number" required>'+(service==='delivery'?'<textarea name="address" placeholder="Delivery address" required></textarea>':'')+'<textarea name="notes" placeholder="Special instructions"></textarea><div class="notice"><b>⭐ Yawd Rewards</b><br><br><b>New customer:</b> create any 4-digit PIN.<br><b>Returning customer:</b> enter the same PIN.</div><input name="pin" placeholder="4-digit Loyalty PIN" inputmode="numeric" pattern="[0-9]{4}" maxlength="4"><input name="redeem" type="number" min="0" step="1" placeholder="Reward J$ to use (optional)"><button class="btn">Place order • '+money(subtotal())+'</button></form></div></div>'}
-async function place(e){e.preventDefault();let f=new FormData(e.target),phone=f.get('phone'),pin=f.get('pin')||'',redeem=Number(f.get('redeem')||0);try{let d=await call('create-order',{location_id:$('loc').value,customer_name:f.get('name'),phone,fulfillment:service,delivery_address:f.get('address')||'',notes:f.get('notes')||'',loyalty_pin:pin,redeem_jmd:redeem,items:cart.map(x=>({menu_item_id:x.id,quantity:x.q,selected_value_ids:x.selected_value_ids}))});let o={id:d.id,n:d.order_number,phone,status:d.status,total:d.total_jmd,fulfillment:service,items:cart.map(x=>({id:x.id,name:x.name,q:x.q,selected_value_ids:x.selected_value_ids,selection_summary:x.selection_summary}))};orders.unshift(o);localStorage.ysOrders=JSON.stringify(orders);cart=[];tracker=o;trackView();startTrack()}catch(err){alert(err.message)}}
+function checkout(){
+  if(!cart.length)return openCart();
+  const sub=subtotal();
+  const review=cart.map(x=>`<div class="reviewItem">
+    <div><b>${x.q}× ${esc(x.name)}</b>${x.selection_summary?`<div class="cartMeta">${esc(x.selection_summary).replace(/ • /g,'<br>')}</div>`:''}</div>
+    <b>${money(x.price_jmd*x.q)}</b>
+  </div>`).join('');
+  $('modal').innerHTML=`<div class="ov"><div class="dr">
+    <span class="tag">CHECKOUT</span><h2>Complete your order</h2>
+
+    <div class="checkoutSection">
+      <h3>Order summary</h3>
+      ${review}
+      <div class="summaryRow" style="margin-top:10px"><span>Subtotal</span><b>${money(sub)}</b></div>
+    </div>
+
+    <form onsubmit="place(event)" id="checkoutForm">
+      <div class="checkoutSection">
+        <h3>Customer details</h3>
+        <label class="checkoutLabel">Full name</label>
+        <input name="name" placeholder="Your name" required>
+        <label class="checkoutLabel">Phone number</label>
+        <input name="phone" placeholder="Phone number" inputmode="tel" required>
+      </div>
+
+      <div class="checkoutSection">
+        <h3>${service==='delivery'?'Delivery details':'Pickup details'}</h3>
+        ${service==='delivery'
+          ? `<label class="checkoutLabel">Delivery address</label>
+             <textarea name="address" placeholder="House number, street/community and any landmark" required></textarea>
+             <div class="smallNote">Staff will use this address for the delivery order.</div>`
+          : `<div class="notice">Pickup from <b>${$('loc')&&$('loc').value==='cobbla'?'Cobbla, Manchester':'Linstead Courtyard'}</b>.</div>`}
+        <label class="checkoutLabel">Special instructions</label>
+        <textarea name="notes" placeholder="Example: no sauce, call when outside, etc."></textarea>
+      </div>
+
+      <div class="checkoutSection">
+        <h3>⭐ Yawd Rewards</h3>
+        <p class="smallNote">Earn J$1 for every J$100 actually paid.</p>
+        <label class="checkoutLabel">4-digit Loyalty PIN</label>
+        <input name="pin" placeholder="Create or enter your 4-digit PIN" inputmode="numeric" pattern="[0-9]{4}" maxlength="4">
+        <label class="checkoutLabel">Use rewards (optional)</label>
+        <input name="redeem" type="number" min="0" step="1" placeholder="J$ amount to redeem">
+        <div class="smallNote">New customer: create any 4-digit PIN you will remember. Returning customer: use the same PIN.</div>
+      </div>
+
+      <div class="checkoutSection">
+        <h3>Payment</h3>
+        <div class="notice"><b>Cash payment</b><br>Pay the amount due when you collect or receive your order.</div>
+        <div class="summaryRow"><span>Order subtotal</span><b>${money(sub)}</b></div>
+        <div class="summaryRow"><span>Rewards applied</span><span>Calculated when order is placed</span></div>
+      </div>
+
+      <button class="btn">Place Order • ${money(sub)}</button>
+    </form>
+
+    <button class="btn" style="background:#ddd;margin-top:8px" onclick="openCart()">Back to Cart</button>
+  </div></div>`;
+}
+async function place(e){
+  e.preventDefault();
+  let f=new FormData(e.target),phone=f.get('phone'),pin=f.get('pin')||'',redeem=Number(f.get('redeem')||0);
+  let locEl=$('loc'),locationId=locEl?locEl.value:'linstead';
+  let submitBtn=e.target.querySelector('button[type="submit"],button.btn');
+  if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='Placing order...'}
+  try{
+    let d=await call('create-order',{
+      location_id:locationId,
+      customer_name:f.get('name'),
+      phone,
+      fulfillment:service,
+      delivery_address:f.get('address')||'',
+      notes:f.get('notes')||'',
+      loyalty_pin:pin,
+      redeem_jmd:redeem,
+      items:cart.map(x=>({menu_item_id:x.id,quantity:x.q,selected_value_ids:x.selected_value_ids}))
+    });
+    let o={
+      id:d.id,n:d.order_number,phone,status:d.status,total:d.total_jmd,
+      redeemed:d.loyalty_redeemed_jmd||0,fulfillment:service,
+      items:cart.map(x=>({id:x.id,name:x.name,q:x.q,selected_value_ids:x.selected_value_ids,selection_summary:x.selection_summary}))
+    };
+    orders.unshift(o);localStorage.ysOrders=JSON.stringify(orders);cart=[];tracker=o;startTrack();
+    $('modal').innerHTML=`<div class="ov"><div class="dr">
+      <div class="confirmBox">
+        <div style="font-size:42px">✅</div>
+        <h2>Order received!</h2>
+        <div class="confirmNo">${esc(o.n)}</div>
+        <p>We’ve received your Yawd Sweetness order.</p>
+      </div>
+      <div class="checkoutSection">
+        <div class="summaryRow"><span>Status</span><b>${esc(info[o.status]||o.status)}</b></div>
+        <div class="summaryRow"><span>Cash due</span><b>${money(o.total)}</b></div>
+        ${o.redeemed?`<div class="summaryRow"><span>Rewards used</span><b>${money(o.redeemed)}</b></div>`:''}
+        <div class="summaryRow"><span>Service</span><b>${o.fulfillment==='delivery'?'Delivery':'Pickup'}</b></div>
+      </div>
+      <button class="btn" onclick="trackView()">Track My Order</button>
+      <button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM();showOrders()">View My Orders</button>
+    </div></div>`;
+  }catch(err){
+    alert(err.message);
+    if(submitBtn){submitBtn.disabled=false;submitBtn.textContent='Place Order • '+money(subtotal())}
+  }
+}
 const info={received:'Order received',preparing:'Preparing your order',ready:'Your order is ready!',out_for_delivery:'Out for delivery',completed:'Order completed',cancelled:'Order cancelled'};
 function trackView(){let flow=tracker.fulfillment==='delivery'?['received','preparing','ready','out_for_delivery','completed']:['received','preparing','ready','completed'],ix=flow.indexOf(tracker.status);$('modal').innerHTML='<div class="ov"><div class="dr"><span class="tag">LIVE TRACKING</span><h1>'+esc(tracker.n)+'</h1><h2>'+esc(info[tracker.status]||tracker.status)+'</h2>'+flow.map((s,i)=>'<div class="step '+(i<ix?'done':i===ix?'current':'')+'">'+(i<ix?'✅':'○')+' '+esc(info[s])+'</div>').join('')+'<div class="notice">Cash due: <b>'+money(tracker.total)+'</b></div><button class="btn" onclick="refreshTrack()">Check now</button><button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Close</button></div></div>'}
 async function refreshTrack(){if(!tracker)return;try{let old=tracker.status,d=await call('track-order',{id:tracker.id,phone:tracker.phone});tracker.status=d.status;tracker.total=d.total_jmd;let o=orders.find(x=>x.id===tracker.id);if(o)Object.assign(o,tracker);localStorage.ysOrders=JSON.stringify(orders);if(old!==tracker.status)sendStatusNotification(tracker.n,tracker.status);trackView();if(['completed','cancelled'].includes(tracker.status)&&timer){clearInterval(timer);timer=null}}catch{}}
