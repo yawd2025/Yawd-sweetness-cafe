@@ -10,7 +10,7 @@ input,textarea,select{width:100%;padding:11px;border:1px solid #ddd;border-radiu
 .order{border-left:5px solid #d4af37}.muted{font-size:12px;color:#666}.preview{width:100%;max-width:260px;height:160px;object-fit:cover;border-radius:12px;border:1px solid #ddd;margin:8px 0}
 .uploading{opacity:.55;pointer-events:none}.photoLabel{font-weight:800;display:block;margin-top:8px}.optionBox{border:1px solid #ddd;border-radius:14px;padding:12px;margin:10px 0;background:#fafafa}
 .groupHead{display:grid;grid-template-columns:1fr 120px;gap:8px}.switchline{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.switchline input{width:auto;margin:0}
-.choiceRow{display:grid;grid-template-columns:1fr 110px 44px;gap:7px;align-items:center}.choiceRow input{margin:4px 0}.danger{background:#ffe0e0}.good{background:#e8f7e8}
+.choiceRow{display:grid;grid-template-columns:1fr 110px 44px;gap:7px;align-items:center}.choiceRow input{margin:4px 0}.danger{background:#ffe0e0}.good{background:#e8f7e8}.deleteBtn{background:#b42318!important;color:#fff!important;margin-top:8px}
 .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#f1e6af;font-size:11px;font-weight:800;margin:2px}.catNavWrap{position:sticky;top:69px;z-index:8;background:#f6f2e8;padding:10px 0 8px}.catNav{display:flex;gap:8px;overflow-x:auto;padding:0 2px 4px;scrollbar-width:none}.catNav::-webkit-scrollbar{display:none}.catNav button{white-space:nowrap;border:1px solid #ddd;border-radius:999px;padding:10px 13px;background:#fff;font-weight:900}.catNav button.on{background:#111;color:#fff;border-color:#111}.catHeader{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:12px 0 4px}.catCount{font-size:12px;color:#666}.emptyCat{background:#fff;border-radius:16px;padding:24px;text-align:center;color:#666;margin:12px 0}
 @media(max-width:560px){.groupHead{grid-template-columns:1fr}.choiceRow{grid-template-columns:1fr 95px 42px}}
 </style></head>
@@ -71,6 +71,15 @@ function renderOptionsEditor(){
  '<button class="mini" onclick="addChoice('+i+')" type="button">+ Add choice</button></div>').join('')+
  '<button class="btn" onclick="saveOptions()">Save Options & Choices</button></div>'
 }
+
+async function deleteProduct(id,name){
+  if(!confirm('Remove "'+name+'" from the menu? Customers will no longer see or order it.'))return;
+  try{
+    await call('staff-menu-delete',{token,id});
+    alert(name+' removed from the menu.');
+    await loadMenu();
+  }catch(err){alert(err.message)}
+}
 function render(){
  let r=$('root');if(!me){r.innerHTML='<div class="card"><h2>Staff sign in</h2><form onsubmit="login(event)"><input name="token" type="password" placeholder="Access code" required><button class="btn">Sign in</button></form></div>';return}
  let nav='<div class="row"><div><b>'+esc(me.label)+'</b><div class="muted">'+(me.is_admin?'Owner/Admin':'Location staff')+'</div></div><button class="mini" onclick="logout()">Logout</button></div><div class="tabs"><button class="mini" onclick="loadOrders()">Orders</button>'+(me.is_admin?'<button class="mini" onclick="loadMenu()">Menu Manager</button><button class="mini" onclick="loyaltyPage()">⭐ Loyalty Accounts</button>':'')+'</div>';
@@ -84,7 +93,7 @@ function render(){
  '<div class="card"><h2>Add product'+(adminCat!=='all'?' to '+esc(currentAdminCatName()):'')+'</h2><form onsubmit="addProduct(event)"><input name="name" placeholder="Product name" required><label>Category<select name="category_id" required><option value="">Choose category</option>'+categoryOptions('')+'</select></label><textarea name="description" placeholder="Description"></textarea><input name="price" type="number" min="0" placeholder="Base Price JMD" required><label class="photoLabel">📷 Product photo</label><input name="image" type="file" accept="image/jpeg,image/png,image/webp"><div class="muted">Base price is before size/add-on price changes.</div><button class="btn">Add Product</button></form></div>'+
  (shown.length?shown.map((m,i)=>'<form class="card" data-image="'+esc(m.image_url||'')+'" onsubmit="saveProduct(event,\''+m.id+'\')">'+
  (m.image_url?'<img id="p'+i+'" class="preview" src="'+esc(m.image_url)+'">':'<img id="p'+i+'" class="preview" style="display:none">')+
- '<input name="name" value="'+esc(m.name)+'"><label>Category<select name="category_id" required><option value="">Choose category</option>'+categoryOptions(m.category_id)+'</select></label><textarea name="description">'+esc(m.description)+'</textarea><input name="price" type="number" value="'+m.price_jmd+'"><label class="photoLabel">📷 Change product photo</label><input name="image" type="file" accept="image/jpeg,image/png,image/webp" onchange="preview(this,\'p'+i+'\')"><label><input style="width:auto" name="sold" type="checkbox" '+(m.sold_out?'checked':'')+'> Sold out</label><div>'+((m.option_groups||[]).map(g=>'<span class="badge">'+esc(g.name)+' ('+(g.values||[]).length+')</span>').join('')||'<span class="muted">No sizes/flavors/options yet.</span>')+'</div><button type="button" class="mini good" style="margin:10px 0;width:100%" onclick="openOptions(\''+m.id+'\')">⚙️ Sizes, Flavors, Combos & Add-ons</button><button class="btn">Save Product</button></form>').join(''):'<div class="emptyCat">No products in this category yet. Use <b>Add product</b> above.</div>')
+ '<input name="name" value="'+esc(m.name)+'"><label>Category<select name="category_id" required><option value="">Choose category</option>'+categoryOptions(m.category_id)+'</select></label><textarea name="description">'+esc(m.description)+'</textarea><input name="price" type="number" value="'+m.price_jmd+'"><label class="photoLabel">📷 Change product photo</label><input name="image" type="file" accept="image/jpeg,image/png,image/webp" onchange="preview(this,\'p'+i+'\')"><label><input style="width:auto" name="sold" type="checkbox" '+(m.sold_out?'checked':'')+'> Sold out</label><div>'+((m.option_groups||[]).map(g=>'<span class="badge">'+esc(g.name)+' ('+(g.values||[]).length+')</span>').join('')||'<span class="muted">No sizes/flavors/options yet.</span>')+'</div><button type="button" class="mini good" style="margin:10px 0;width:100%" onclick="openOptions(\''+m.id+'\')">⚙️ Sizes, Flavors, Combos & Add-ons</button><button class="btn">Save Product</button><button type="button" class="btn deleteBtn" onclick="deleteProduct(\''+m.id+'\',this.form.elements.name.value)">🗑 Remove Item</button></form>').join(''):'<div class="emptyCat">No products in this category yet. Use <b>Add product</b> above.</div>')
 }
 boot();
 </script></body></html>
