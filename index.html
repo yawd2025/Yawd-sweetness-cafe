@@ -196,7 +196,7 @@ select,input,textarea{width:100%;padding:13px;border:1px solid var(--line);borde
 <div class="w"><header><div id="brand"><div class="brandShell"><div style="width:68px;height:68px;border-radius:50%;background:#fff1d6;display:flex;align-items:center;justify-content:center;font-size:28px">☕</div><div class="brandWords"><div class="brandName">YAWD SWEETNESS CAFÉ</div><div class="brandLine">BREWING SMILES DAILY</div><div class="brandPill">🇯🇲 JAMAICAN FLAVOR • MADE WITH LOVE</div></div></div></div></header><div id="notifyBox"></div><div id="view"></div></div>
 <nav class="bottom"><button onclick="showMenu()">🏠<br>Menu</button><button onclick="openCart()">🛍️<br>Cart</button><button onclick="showOrders()">📋<br>My Orders</button><button onclick="showRewards()">⭐<br>Rewards</button></nav><div id="modal"></div>
 <script>
-const API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-sweetness';
+const API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-sweetness';const LOCATION_API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-delivery-location';
 let menu=[],categories=[],cart=[],service='pickup',orders=JSON.parse(localStorage.ysOrders||'[]'),tracker=null,timer=null,activeCat='all',customizing=null;
 const $=x=>document.getElementById(x),money=n=>'J$'+Number(n||0).toLocaleString();
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -337,6 +337,32 @@ function openCart(){
     <button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Continue Shopping</button>
   </div></div>`;
 }
+
+function captureDeliveryLocation(btn){
+  if(!navigator.geolocation){alert('Location sharing is not supported on this device. You can still enter your delivery address.');return}
+  let status=$('gpsStatus');
+  if(btn){btn.disabled=true;btn.textContent='📍 Getting your location...'}
+  if(status)status.innerHTML='Waiting for your phone location permission...';
+  navigator.geolocation.getCurrentPosition(
+    p=>{
+      deliveryCoords={lat:p.coords.latitude,lng:p.coords.longitude};
+      if(status)status.innerHTML='<b style="color:#0c6b43">✅ Current location saved for the driver.</b><br><span class="smallNote">Your written address is still required so staff can identify the destination.</span>';
+      if(btn){btn.disabled=false;btn.textContent='✅ Location Saved'}
+    },
+    err=>{
+      deliveryCoords=null;
+      if(status)status.innerHTML='<b style="color:#a22a1c">Location was not shared.</b> You can still order using your written address.';
+      if(btn){btn.disabled=false;btn.textContent='📍 Share My Current Location'}
+    },
+    {enableHighAccuracy:true,timeout:15000,maximumAge:60000}
+  );
+}
+async function saveDeliveryLocation(orderId,phone){
+  if(service!=='delivery'||!deliveryCoords)return;
+  try{
+    await fetch(LOCATION_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'save',order_id:orderId,phone,lat:deliveryCoords.lat,lng:deliveryCoords.lng})});
+  }catch(e){}
+}
 function checkout(){
   if(!cart.length)return openCart();
   const sub=subtotal();
@@ -367,7 +393,8 @@ function checkout(){
         ${service==='delivery'
           ? `<label class="checkoutLabel">Delivery address</label>
              <textarea name="address" placeholder="House number, street/community and any landmark" required></textarea>
-             <div class="smallNote">Staff will use this address for the delivery order.</div>`
+             <button type="button" class="btn" style="margin:6px 0 8px;background:#e9f7ee;color:#0c6b43;box-shadow:none" onclick="captureDeliveryLocation(this)">📍 Share My Current Location</button>
+             <div id="gpsStatus" class="smallNote"><b>Recommended for delivery:</b> Share your phone's current location so the driver can open turn-by-turn navigation directly to you.</div>`
           : `<div class="notice">Pickup from <b>${$('loc')&&$('loc').value==='cobbla'?'Cobbla, Manchester':'Linstead Courtyard'}</b>.</div>`}
         <label class="checkoutLabel">Special instructions</label>
         <textarea name="notes" placeholder="Example: no sauce, call when outside, etc."></textarea>
@@ -414,12 +441,13 @@ async function place(e){
       redeem_jmd:redeem,
       items:cart.map(x=>({menu_item_id:x.id,quantity:x.q,selected_value_ids:x.selected_value_ids}))
     });
+    await saveDeliveryLocation(d.id,phone);
     let o={
       id:d.id,n:d.order_number,phone,status:d.status,total:d.total_jmd,
       redeemed:d.loyalty_redeemed_jmd||0,fulfillment:service,
       items:cart.map(x=>({id:x.id,name:x.name,q:x.q,selected_value_ids:x.selected_value_ids,selection_summary:x.selection_summary}))
     };
-    orders.unshift(o);localStorage.ysOrders=JSON.stringify(orders);cart=[];tracker=o;startTrack();
+    orders.unshift(o);localStorage.ysOrders=JSON.stringify(orders);cart=[];tracker=o;deliveryCoords=null;startTrack();
     $('modal').innerHTML=`<div class="ov"><div class="dr">
       <div class="confirmBox">
         <div style="font-size:42px">✅</div>
