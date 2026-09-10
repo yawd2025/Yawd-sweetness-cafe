@@ -192,6 +192,9 @@ select,input,textarea{width:100%;padding:13px;border:1px solid var(--line);borde
   .item h3{font-size:15px}
   .bottom{bottom:8px;width:calc(100% - 16px)}
 }
+
+.hoursCard{margin:10px 14px 4px;padding:14px 15px;border-radius:18px;background:#fffdf8;border:1px solid var(--line);box-shadow:var(--soft)}
+.hoursTitle{font-weight:900;font-size:14px;margin-bottom:7px}.hoursGrid{font-size:12px;line-height:1.55;color:#5f554c}.statusOpen{color:#0c6b43;font-weight:900}.statusClosed{color:#b3261e;font-weight:900}.deliveryAlert{margin:10px 14px;padding:13px 15px;border-radius:16px;background:#fff0ee;border:1px solid #f4b8b2;color:#9b1c16;font-weight:900}.deliveryOk{margin:10px 14px;padding:13px 15px;border-radius:16px;background:#eef9f2;border:1px solid #b8dfc6;color:#0c6b43;font-weight:900}.orderTime{font-size:12px;color:#746a61;margin-top:5px}
 </style></head><body>
 <div class="w"><header><div id="brand"><div class="brandShell"><div style="width:68px;height:68px;border-radius:50%;background:#fff1d6;display:flex;align-items:center;justify-content:center;font-size:28px">☕</div><div class="brandWords"><div class="brandName">YAWD SWEETNESS CAFÉ</div><div class="brandLine">BREWING SMILES DAILY</div><div class="brandPill">🇯🇲 JAMAICAN FLAVOR • MADE WITH LOVE</div></div></div></div></header><div id="notifyBox"></div><div id="view"></div></div>
 <nav class="bottom"><button onclick="showMenu()">🏠<br>Menu</button><button onclick="openCart()">🛍️<br>Cart</button><button onclick="showOrders()">📋<br>My Orders</button><button onclick="showRewards()">⭐<br>Rewards</button></nav><div id="modal"></div>
@@ -200,6 +203,40 @@ const API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-sweetness'
 let menu=[],categories=[],cart=[],service='pickup',orders=JSON.parse(localStorage.ysOrders||'[]'),tracker=null,timer=null,activeCat='all',customizing=null;
 const $=x=>document.getElementById(x),money=n=>'J$'+Number(n||0).toLocaleString();
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function jmParts(d=new Date()){
+  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Jamaica',weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d);
+  const o={};parts.forEach(p=>o[p.type]=p.value);return o;
+}
+function jmStatus(){
+  const p=jmParts(),day=p.weekday,h=Number(p.hour)%24,m=Number(p.minute),mins=h*60+m;
+  const isSun=day==='Sun',isFriSat=day==='Fri'||day==='Sat';
+  const open=isSun?11*60:7*60,close=isSun?22*60:(isFriSat?22*60:20*60);
+  const storeOpen=mins>=open&&mins<close;
+  const deliveryOpen=storeOpen&&!isSun&&mins<19*60;
+  return {storeOpen,deliveryOpen,isSun,mins,day};
+}
+function jmFormat(value){
+  if(!value)return '';
+  try{return new Intl.DateTimeFormat('en-JM',{timeZone:'America/Jamaica',dateStyle:'medium',timeStyle:'short'}).format(new Date(value))+' Jamaica time'}catch{return ''}
+}
+function hoursHtml(){
+  const s=jmStatus();
+  return `<div class="hoursCard"><div class="hoursTitle">🕒 Opening Hours • Jamaica Time</div><div class="hoursGrid">
+    Monday–Thursday: <b>7am–8pm</b><br>Friday–Saturday: <b>7am–10pm</b><br>Sunday: <b>11am–10pm</b> • <b>No delivery</b><br>Holidays: <b>Hours may vary</b><br><span class="${s.storeOpen?'statusOpen':'statusClosed'}">${s.storeOpen?'● Open now':'● Store Closed'}</span></div></div>`;
+}
+function deliveryMessageHtml(){
+  const s=jmStatus();
+  if(s.isSun)return '<div class="deliveryAlert">🚫 No delivery is available on Sundays.</div>';
+  if(s.mins>=19*60)return '<div class="deliveryAlert">🚫 Sorry, no delivery is available after 7pm.</div>';
+  return '<div class="deliveryOk">🚗 Delivery is available until 7pm today.</div>';
+}
+function chooseService(kind){
+  const s=jmStatus();
+  if(!s.storeOpen){alert('Store Closed');service='pickup';openCart();return}
+  if(kind==='delivery'&&!s.deliveryOpen){alert(s.isSun?'Sorry, no delivery is available on Sundays.':'Sorry, no delivery is available after 7pm.');service='pickup';openCart();return}
+  service=kind;openCart();
+}
+
 async function call(a,b){let r=await fetch(API+'?api='+a,{method:b?'POST':'GET',headers:{'content-type':'application/json'},body:b?JSON.stringify(b):null});let d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
 async function boot(){if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});let d=await call('menu');menu=d.items||[];categories=d.categories||[];if(d.settings&&d.settings.logo_url)$('brand').innerHTML='<div class="brandShell"><img class="logo" src="'+esc(d.settings.logo_url)+'"><div class="brandWords"><div class="brandName">YAWD SWEETNESS CAFÉ</div><div class="brandLine">BREWING SMILES DAILY</div><div class="brandPill">🇯🇲 JAMAICAN FLAVOR • MADE WITH LOVE</div></div></div>';renderNotify();showMenu()}
 function renderNotify(){if(!('Notification' in window))return;if(Notification.permission==='default')$('notifyBox').innerHTML='<div class="notify"><b>🔔 Order updates</b><p class="muted">Allow notifications for order status changes.</p><button class="mini" onclick="enableNotifications()">Enable notifications</button></div>';else $('notifyBox').innerHTML=''}
@@ -247,6 +284,8 @@ function showMenu(){
         <option value="cobbla">Cobbla, Manchester</option>
       </select>
     </div>
+    ${hoursHtml()}
+    ${deliveryMessageHtml()}
     <div class="cats">${catsHtml}</div>
     <div class="sectionHead">
       <div><span class="tag" style="color:#8a6810">FRESH • FAST • DELICIOUS</span><h2>${esc(catName)}</h2></div>
@@ -323,9 +362,10 @@ function openCart(){
     <span class="tag">YOUR CART</span><h2>Your order</h2>
     ${cart.length?itemsHtml:'<div class="card"><h3>Your cart is empty.</h3><p class="muted">Add something sweet from the menu to get started.</p></div>'}
     ${cart.length?`
+      ${deliveryMessageHtml()}
       <div class="svc">
-        <button class="${service==='pickup'?'on':''}" onclick="service='pickup';openCart()">Pickup</button>
-        <button class="${service==='delivery'?'on':''}" onclick="service='delivery';openCart()">Delivery</button>
+        <button class="${service==='pickup'?'on':''}" onclick="chooseService('pickup')">Pickup</button>
+        <button class="${service==='delivery'?'on':''}" onclick="chooseService('delivery')">Delivery</button>
       </div>
       <div class="summaryBox">
         <div class="summaryRow"><span>Items</span><b>${totalQty}</b></div>
@@ -346,13 +386,13 @@ function captureDeliveryLocation(btn){
   navigator.geolocation.getCurrentPosition(
     p=>{
       deliveryCoords={lat:p.coords.latitude,lng:p.coords.longitude};
-      if(status)status.innerHTML='<b style="color:#0c6b43">✅ Current location saved for the driver.</b><br><span class="smallNote">Your written address is still required so staff can identify the destination.</span>';
+      if(status)status.innerHTML='<b style="color:#0c6b43">✅ Live location saved for the driver.</b><br><span class="smallNote">Your written address is still required so staff can identify the destination.</span>';
       if(btn){btn.disabled=false;btn.textContent='✅ Location Saved'}
     },
     err=>{
       deliveryCoords=null;
       if(status)status.innerHTML='<b style="color:#a22a1c">Location was not shared.</b> You can still order using your written address.';
-      if(btn){btn.disabled=false;btn.textContent='📍 Share My Current Location'}
+      if(btn){btn.disabled=false;btn.textContent='📍 Use Current Location'}
     },
     {enableHighAccuracy:true,timeout:15000,maximumAge:60000}
   );
@@ -365,6 +405,9 @@ async function saveDeliveryLocation(orderId,phone){
 }
 function checkout(){
   if(!cart.length)return openCart();
+  const hs=jmStatus();
+  if(!hs.storeOpen){alert('Store Closed');return}
+  if(service==='delivery'&&!hs.deliveryOpen){alert(hs.isSun?'Sorry, no delivery is available on Sundays.':'Sorry, no delivery is available after 7pm.');service='pickup';openCart();return}
   const sub=subtotal();
   const review=cart.map(x=>`<div class="reviewItem">
     <div><b>${x.q}× ${esc(x.name)}</b>${x.selection_summary?`<div class="cartMeta">${esc(x.selection_summary).replace(/ • /g,'<br>')}</div>`:''}</div>
@@ -389,12 +432,12 @@ function checkout(){
       </div>
 
       <div class="checkoutSection">
-        <h3>${service==='delivery'?'Delivery details':'Pickup details'}</h3>
+        <h3>${service==='delivery'?'Delivery details':'Pickup details'}</h3>${service==='delivery'?deliveryMessageHtml():''}
         ${service==='delivery'
           ? `<label class="checkoutLabel">Delivery address</label>
              <textarea name="address" placeholder="House number, street/community and any landmark" required></textarea>
-             <button type="button" class="btn" style="margin:6px 0 8px;background:#e9f7ee;color:#0c6b43;box-shadow:none" onclick="captureDeliveryLocation(this)">📍 Share My Current Location</button>
-             <div id="gpsStatus" class="smallNote"><b>Recommended for delivery:</b> Share your phone's current location so the driver can open turn-by-turn navigation directly to you.</div>`
+             <button type="button" class="btn" style="margin:6px 0 8px;background:#e9f7ee;color:#0c6b43;box-shadow:none" onclick="captureDeliveryLocation(this)">📍 Use Current Location</button>
+             <div id="gpsStatus" class="smallNote"><b>Recommended for delivery:</b> Use your phone's current location so the driver can open turn-by-turn navigation directly to you.</div>`
           : `<div class="notice">Pickup from <b>${$('loc')&&$('loc').value==='cobbla'?'Cobbla, Manchester':'Linstead Courtyard'}</b>.</div>`}
         <label class="checkoutLabel">Special instructions</label>
         <textarea name="notes" placeholder="Example: no sauce, call when outside, etc."></textarea>
@@ -425,6 +468,9 @@ function checkout(){
 }
 async function place(e){
   e.preventDefault();
+  const hs=jmStatus();
+  if(!hs.storeOpen){alert('Store Closed');return}
+  if(service==='delivery'&&!hs.deliveryOpen){alert(hs.isSun?'Sorry, no delivery is available on Sundays.':'Sorry, no delivery is available after 7pm.');return}
   let f=new FormData(e.target),phone=f.get('phone'),pin=f.get('pin')||'',redeem=Number(f.get('redeem')||0);
   let locEl=$('loc'),locationId=locEl?locEl.value:'linstead';
   let submitBtn=e.target.querySelector('button[type="submit"],button.btn');
@@ -444,7 +490,7 @@ async function place(e){
     await saveDeliveryLocation(d.id,phone);
     let o={
       id:d.id,n:d.order_number,phone,status:d.status,total:d.total_jmd,
-      redeemed:d.loyalty_redeemed_jmd||0,fulfillment:service,
+      redeemed:d.loyalty_redeemed_jmd||0,fulfillment:service,created_at:d.created_at||new Date().toISOString(),
       items:cart.map(x=>({id:x.id,name:x.name,q:x.q,selected_value_ids:x.selected_value_ids,selection_summary:x.selection_summary}))
     };
     orders.unshift(o);localStorage.ysOrders=JSON.stringify(orders);cart=[];tracker=o;deliveryCoords=null;startTrack();
@@ -456,7 +502,7 @@ async function place(e){
         <p>We’ve received your Yawd Sweetness order.</p>
       </div>
       <div class="checkoutSection">
-        <div class="summaryRow"><span>Status</span><b>${esc(info[o.status]||o.status)}</b></div>
+        <div class="summaryRow"><span>Status</span><b>${esc(info[o.status]||o.status)}</b></div><div class="summaryRow"><span>Placed</span><b>${esc(jmFormat(o.created_at))}</b></div>
         <div class="summaryRow"><span>Cash due</span><b>${money(o.total)}</b></div>
         ${o.redeemed?`<div class="summaryRow"><span>Rewards used</span><b>${money(o.redeemed)}</b></div>`:''}
         <div class="summaryRow"><span>Service</span><b>${o.fulfillment==='delivery'?'Delivery':'Pickup'}</b></div>
@@ -473,7 +519,7 @@ const info={received:'Order received',preparing:'Preparing your order',ready:'Yo
 function trackView(){let flow=tracker.fulfillment==='delivery'?['received','preparing','ready','out_for_delivery','completed']:['received','preparing','ready','completed'],ix=flow.indexOf(tracker.status);$('modal').innerHTML='<div class="ov"><div class="dr"><span class="tag">LIVE TRACKING</span><h1>'+esc(tracker.n)+'</h1><h2>'+esc(info[tracker.status]||tracker.status)+'</h2>'+flow.map((s,i)=>'<div class="step '+(i<ix?'done':i===ix?'current':'')+'">'+(i<ix?'✅':'○')+' '+esc(info[s])+'</div>').join('')+'<div class="notice">Cash due: <b>'+money(tracker.total)+'</b></div><button class="btn" onclick="refreshTrack()">Check now</button><button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Close</button></div></div>'}
 async function refreshTrack(){if(!tracker)return;try{let old=tracker.status,d=await call('track-order',{id:tracker.id,phone:tracker.phone});tracker.status=d.status;tracker.total=d.total_jmd;let o=orders.find(x=>x.id===tracker.id);if(o)Object.assign(o,tracker);localStorage.ysOrders=JSON.stringify(orders);if(old!==tracker.status)sendStatusNotification(tracker.n,tracker.status);trackView();if(['completed','cancelled'].includes(tracker.status)&&timer){clearInterval(timer);timer=null}}catch{}}
 function startTrack(){if(timer)clearInterval(timer);timer=setInterval(refreshTrack,10000)}
-function showOrders(){$('view').innerHTML='<section class="hero"><span class="tag">MY ORDERS</span><h1>Order history</h1></section>'+(!orders.length?'<div class="card">No saved orders yet.</div>':orders.map(o=>'<div class="card order"><div class="row"><b>'+esc(o.n)+'</b><span>'+esc(o.status)+'</span></div><p>'+money(o.total)+'</p><div class="row"><button class="mini" onclick="trackSaved(\''+o.id+'\')">Track</button><button class="mini" onclick="reorder(\''+o.id+'\')">🔁 Reorder</button></div></div>').join(''))}
+function showOrders(){$('view').innerHTML='<section class="hero"><span class="tag">MY ORDERS</span><h1>Order history</h1></section>'+(!orders.length?'<div class="card">No saved orders yet.</div>':orders.map(o=>'<div class="card order"><div class="row"><b>'+esc(o.n)+'</b><span>'+esc(o.status)+'</span></div><div class="orderTime">🕒 '+esc(jmFormat(o.created_at))+'</div><p>'+money(o.total)+'</p><div class="row"><button class="mini" onclick="trackSaved(\''+o.id+'\')">Track</button><button class="mini" onclick="reorder(\''+o.id+'\')">🔁 Reorder</button></div></div>').join(''))}
 function trackSaved(id){tracker=orders.find(x=>x.id===id);if(tracker){trackView();startTrack()}}
 function reorder(id){let o=orders.find(x=>x.id===id);cart=[];(o?.items||[]).forEach(i=>{let m=menu.find(x=>x.id===i.id);if(m&&!m.sold_out)addConfigured(m,i.selected_value_ids||[])});openCart()}
 function showRewards(){$('view').innerHTML='<section class="hero"><span class="tag">YAWD REWARDS</span><h1>Your rewards wallet</h1><p>J$1 back for every J$100 actually paid.</p></section><div class="card"><form onsubmit="checkRewards(event)"><input name="phone" placeholder="Phone number" required><input name="pin" placeholder="Your 4-digit Loyalty PIN" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required><button class="btn">Check Balance</button></form></div><div id="rewardResult"></div>'}
