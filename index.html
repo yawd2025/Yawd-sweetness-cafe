@@ -230,11 +230,38 @@ function deliveryMessageHtml(){
   if(s.mins>=19*60)return '<div class="deliveryAlert">🚫 Sorry, no delivery is available after 7pm.</div>';
   return '<div class="deliveryOk">🚗 Delivery is available until 7pm today.</div>';
 }
+
+async function getDeliveryQuote(){
+  if(service!=='delivery'||!deliveryCoords)return null;
+  const locEl=$('loc'),locationId=locEl?locEl.value:'linstead';
+  const r=await fetch(LOCATION_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
+    action:'quote',location_id:locationId,lat:deliveryCoords.lat,lng:deliveryCoords.lng,subtotal_jmd:subtotal()
+  })});
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.error||'Could not calculate delivery fee.');
+  deliveryQuote=d;return d;
+}
+function deliveryFeeSummary(){
+  if(service!=='delivery')return '';
+  if(!deliveryQuote)return '<div class="summaryRow"><span>Delivery fee</span><b>Use Current Location</b></div>';
+  return '<div class="summaryRow"><span>Distance</span><b>'+deliveryQuote.distance_km+' km</b></div>'
+    +'<div class="summaryRow"><span>Delivery fee</span><b>'+money(deliveryQuote.delivery_fee_jmd)+'</b></div>'
+    +(deliveryQuote.min_order_jmd?'<div class="summaryRow"><span>Minimum food order</span><b>'+money(deliveryQuote.min_order_jmd)+'</b></div>':'');
+}
+function updateCheckoutDeliverySummary(){
+  const box=$('deliveryPriceBox'),box2=$('deliveryPriceBox2'),btn=$('placeOrderBtn');
+  if(box)box.innerHTML=deliveryFeeSummary();
+  if(box2)box2.innerHTML=deliveryFeeSummary();
+  if(btn){
+    const total=subtotal()+(service==='delivery'&&deliveryQuote?Number(deliveryQuote.delivery_fee_jmd||0):0);
+    btn.textContent='Place Order • '+money(total);
+  }
+}
 function chooseService(kind){
   const s=jmStatus();
   if(!s.storeOpen){alert('Store Closed');service='pickup';openCart();return}
   if(kind==='delivery'&&!s.deliveryOpen){alert(s.isSun?'Sorry, no delivery is available on Sundays.':'Sorry, no delivery is available after 7pm.');service='pickup';openCart();return}
-  service=kind;openCart();
+  service=kind;if(kind!=='delivery'){deliveryCoords=null;deliveryQuote=null}openCart();
 }
 
 async function call(a,b){let r=await fetch(API+'?api='+a,{method:b?'POST':'GET',headers:{'content-type':'application/json'},body:b?JSON.stringify(b):null});let d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
@@ -379,29 +406,45 @@ function openCart(){
 }
 
 function captureDeliveryLocation(btn){
-  if(!navigator.geolocation){alert('Location sharing is not supported on this device. You can still enter your delivery address.');return}
+  if(!navigator.geolocation){alert('Location sharing is not supported on this device. Delivery requires your current location so the app can calculate the fee.');return}
   let status=$('gpsStatus');
   if(btn){btn.disabled=true;btn.textContent='📍 Getting your location...'}
   if(status)status.innerHTML='Waiting for your phone location permission...';
   navigator.geolocation.getCurrentPosition(
-    p=>{
+    async p=>{
       deliveryCoords={lat:p.coords.latitude,lng:p.coords.longitude};
-      if(status)status.innerHTML='<b style="color:#0c6b43">✅ Live location saved for the driver.</b><br><span class="smallNote">Your written address is still required so staff can identify the destination.</span>';
-      if(btn){btn.disabled=false;btn.textContent='✅ Location Saved'}
+      deliveryQuote=null;
+      try{
+        const q=await getDeliveryQuote();
+        if(status)status.innerHTML='<b style="color:#0c6b43">✅ Live location saved.</b><br>'
+          +'Distance from Linstead: <b>'+q.distance_km+' km</b><br>'
+          +'Delivery fee: <b>'+money(q.delivery_fee_jmd)+'</b>'
+          +(q.min_order_jmd?'<br>Minimum food order: <b>'+money(q.min_order_jmd)+'</b>':'')
+          +'<br><span class="smallNote">The driver can also use this location for navigation.</span>';
+        if(btn){btn.disabled=false;btn.textContent='✅ Location & Fee Calculated'}
+        updateCheckoutDeliverySummary();
+      }catch(err){
+        deliveryQuote=null;
+        if(status)status.innerHTML='<b style="color:#a22a1c">⚠️ '+esc(err.message)+'</b>';
+        if(btn){btn.disabled=false;btn.textContent='📍 Try Current Location Again'}
+        updateCheckoutDeliverySummary();
+      }
     },
     err=>{
-      deliveryCoords=null;
-      if(status)status.innerHTML='<b style="color:#a22a1c">Location was not shared.</b> You can still order using your written address.';
+      deliveryCoords=null;deliveryQuote=null;
+      if(status)status.innerHTML='<b style="color:#a22a1c">Location was not shared.</b> Delivery requires current location so we can calculate the correct fee.';
       if(btn){btn.disabled=false;btn.textContent='📍 Use Current Location'}
+      updateCheckoutDeliverySummary();
     },
     {enableHighAccuracy:true,timeout:15000,maximumAge:60000}
   );
 }
 async function saveDeliveryLocation(orderId,phone){
-  if(service!=='delivery'||!deliveryCoords)return;
-  try{
-    await fetch(LOCATION_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'save',order_id:orderId,phone,lat:deliveryCoords.lat,lng:deliveryCoords.lng})});
-  }catch(e){}
+  if(service!=='delivery'||!deliveryCoords)return null;
+  const r=await fetch(LOCATION_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'save',order_id:orderId,phone,lat:deliveryCoords.lat,lng:deliveryCoords.lng})});
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.error||'Could not save delivery location.');
+  return d;
 }
 function checkout(){
   if(!cart.length)return openCart();
@@ -420,6 +463,7 @@ function checkout(){
       <h3>Order summary</h3>
       ${review}
       <div class="summaryRow" style="margin-top:10px"><span>Subtotal</span><b>${money(sub)}</b></div>
+      <div id="deliveryPriceBox">${deliveryFeeSummary()}</div>
     </div>
 
     <form onsubmit="place(event)" id="checkoutForm">
@@ -437,7 +481,7 @@ function checkout(){
           ? `<label class="checkoutLabel">Delivery address</label>
              <textarea name="address" placeholder="House number, street/community and any landmark" required></textarea>
              <button type="button" class="btn" style="margin:6px 0 8px;background:#e9f7ee;color:#0c6b43;box-shadow:none" onclick="captureDeliveryLocation(this)">📍 Use Current Location</button>
-             <div id="gpsStatus" class="smallNote"><b>Recommended for delivery:</b> Use your phone's current location so the driver can open turn-by-turn navigation directly to you.</div>`
+             <div id="gpsStatus" class="smallNote"><b>Required for delivery:</b> Tap “Use Current Location” so we can calculate your delivery fee and send the driver to the correct location.</div>`
           : `<div class="notice">Pickup from <b>${$('loc')&&$('loc').value==='cobbla'?'Cobbla, Manchester':'Linstead Courtyard'}</b>.</div>`}
         <label class="checkoutLabel">Special instructions</label>
         <textarea name="notes" placeholder="Example: no sauce, call when outside, etc."></textarea>
@@ -457,10 +501,11 @@ function checkout(){
         <h3>Payment</h3>
         <div class="notice"><b>Cash payment</b><br>Pay the amount due when you collect or receive your order.</div>
         <div class="summaryRow"><span>Order subtotal</span><b>${money(sub)}</b></div>
+        <div id="deliveryPriceBox2">${deliveryFeeSummary()}</div>
         <div class="summaryRow"><span>Rewards applied</span><span>Calculated when order is placed</span></div>
       </div>
 
-      <button class="btn">Place Order • ${money(sub)}</button>
+      <button class="btn" id="placeOrderBtn">Place Order • ${money(sub+(service==='delivery'&&deliveryQuote?Number(deliveryQuote.delivery_fee_jmd||0):0))}</button>
     </form>
 
     <button class="btn" style="background:#ddd;margin-top:8px" onclick="openCart()">Back to Cart</button>
@@ -473,6 +518,10 @@ async function place(e){
   if(service==='delivery'&&!hs.deliveryOpen){alert(hs.isSun?'Sorry, no delivery is available on Sundays.':'Sorry, no delivery is available after 7pm.');return}
   let f=new FormData(e.target),phone=f.get('phone'),pin=f.get('pin')||'',redeem=Number(f.get('redeem')||0);
   let locEl=$('loc'),locationId=locEl?locEl.value:'linstead';
+  if(service==='delivery'){
+    if(!deliveryCoords){alert('Please tap “Use Current Location” before placing a delivery order.');return}
+    try{await getDeliveryQuote()}catch(err){alert(err.message);return}
+  }
   let submitBtn=e.target.querySelector('button[type="submit"],button.btn');
   if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='Placing order...'}
   try{
@@ -487,9 +536,15 @@ async function place(e){
       redeem_jmd:redeem,
       items:cart.map(x=>({menu_item_id:x.id,quantity:x.q,selected_value_ids:x.selected_value_ids}))
     });
-    await saveDeliveryLocation(d.id,phone);
+    let deliverySaved=null;
+    if(service==='delivery'){
+      deliverySaved=await saveDeliveryLocation(d.id,phone);
+      d.total_jmd=deliverySaved.total_jmd;
+      d.delivery_fee_jmd=deliverySaved.delivery_fee_jmd;
+    }
     let o={
       id:d.id,n:d.order_number,phone,status:d.status,total:d.total_jmd,
+      delivery_fee:d.delivery_fee_jmd||0,distance_km:deliverySaved?.distance_km||null,
       redeemed:d.loyalty_redeemed_jmd||0,fulfillment:service,created_at:d.created_at||new Date().toISOString(),
       items:cart.map(x=>({id:x.id,name:x.name,q:x.q,selected_value_ids:x.selected_value_ids,selection_summary:x.selection_summary}))
     };
@@ -503,6 +558,8 @@ async function place(e){
       </div>
       <div class="checkoutSection">
         <div class="summaryRow"><span>Status</span><b>${esc(info[o.status]||o.status)}</b></div><div class="summaryRow"><span>Placed</span><b>${esc(jmFormat(o.created_at))}</b></div>
+        ${o.fulfillment==='delivery'?`<div class="summaryRow"><span>Delivery fee</span><b>${money(o.delivery_fee)}</b></div>`:''}
+        ${o.distance_km!=null?`<div class="summaryRow"><span>Delivery distance</span><b>${o.distance_km} km</b></div>`:''}
         <div class="summaryRow"><span>Cash due</span><b>${money(o.total)}</b></div>
         ${o.redeemed?`<div class="summaryRow"><span>Rewards used</span><b>${money(o.redeemed)}</b></div>`:''}
         <div class="summaryRow"><span>Service</span><b>${o.fulfillment==='delivery'?'Delivery':'Pickup'}</b></div>
@@ -512,7 +569,7 @@ async function place(e){
     </div></div>`;
   }catch(err){
     alert(err.message);
-    if(submitBtn){submitBtn.disabled=false;submitBtn.textContent='Place Order • '+money(subtotal())}
+    if(submitBtn){submitBtn.disabled=false;submitBtn.textContent='Place Order • '+money(subtotal()+(service==='delivery'&&deliveryQuote?Number(deliveryQuote.delivery_fee_jmd||0):0))}
   }
 }
 const info={received:'Order received',preparing:'Preparing your order',ready:'Your order is ready!',out_for_delivery:'Out for delivery',completed:'Order completed',cancelled:'Order cancelled'};
