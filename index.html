@@ -200,7 +200,7 @@ select,input,textarea{width:100%;padding:13px;border:1px solid var(--line);borde
 <nav class="bottom"><button onclick="showMenu()">🏠<br>Menu</button><button onclick="openCart()">🛍️<br>Cart</button><button onclick="showOrders()">📋<br>My Orders</button><button onclick="showRewards()">⭐<br>Rewards</button></nav><div id="modal"></div>
 <script>
 const API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-sweetness';const LOCATION_API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-delivery-location';
-let menu=[],categories=[],cart=[],service='pickup',orders=JSON.parse(localStorage.ysOrders||'[]'),tracker=null,timer=null,activeCat='all',customizing=null,deliveryCoords=null,deliveryQuote=null;
+let menu=[],categories=[],cart=[],service='pickup',orders=JSON.parse(localStorage.ysOrders||'[]'),tracker=null,timer=null,activeCat='all',customizing=null,deliveryCoords=null,deliveryQuote=null,selectedStore=localStorage.ysStore||'linstead';
 const $=x=>document.getElementById(x),money=n=>'J$'+Number(n||0).toLocaleString();
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function jmParts(d=new Date()){
@@ -233,7 +233,7 @@ function deliveryMessageHtml(){
 
 async function getDeliveryQuote(){
   if(service!=='delivery'||!deliveryCoords)return null;
-  const locEl=$('loc'),locationId=locEl?locEl.value:'linstead';
+  const locEl=$('loc'),locationId=locEl?locEl.value:selectedStore;
   const r=await fetch(LOCATION_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
     action:'quote',location_id:locationId,lat:deliveryCoords.lat,lng:deliveryCoords.lng,subtotal_jmd:subtotal()
   })});
@@ -312,9 +312,9 @@ function showMenu(){
     </section>
     <div class="locationCard">
       <div class="locationLabel">📍 PICK YOUR YAWD</div>
-      <select id="loc">
-        <option value="linstead">Linstead Courtyard</option>
-        <option value="cobbla">Cobbla, Manchester</option>
+      <select id="loc" onchange="selectedStore=this.value;localStorage.ysStore=selectedStore;deliveryCoords=null;deliveryQuote=null;">
+        <option value="linstead" ${selectedStore==='linstead'?'selected':''}>Linstead Courtyard</option>
+        <option value="cobbla" ${selectedStore==='cobbla'?'selected':''}>Cobbla, Manchester</option>
       </select>
     </div>
     ${hoursHtml()}
@@ -423,7 +423,7 @@ function captureDeliveryLocation(btn){
       try{
         const q=await getDeliveryQuote();
         if(status)status.innerHTML='<b style="color:#0c6b43">✅ Live location saved.</b><br>'
-          +'Distance from '+(($('loc')&&$('loc').value==='cobbla')?'Cobbla':'Linstead')+': <b>'+q.distance_km+' km</b><br>'
+          +'Distance from '+((( $('loc')&&$('loc').value) || selectedStore)==='cobbla'?'Cobbla':'Linstead')+': <b>'+q.distance_km+' km</b><br>'
           +'Delivery fee: <b>'+money(q.delivery_fee_jmd)+'</b>'
           +(q.min_order_jmd?'<br>Minimum food order: <b>'+money(q.min_order_jmd)+'</b>':'')
           +'<br><span class="smallNote">The driver can also use this location for navigation.</span>';
@@ -452,7 +452,7 @@ async function searchDeliveryAddress(btn){
   const status=$('gpsStatus');
   const query=(input&&input.value||'').trim();
   if(query.length<3){alert('Type an address, community, business or landmark first.');return}
-  const locEl=$('loc'),locationId=locEl?locEl.value:'linstead';
+  const locEl=$('loc'),locationId=locEl?locEl.value:selectedStore;
   if(btn){btn.disabled=true;btn.textContent='🔎 Searching...'}
   if(results)results.innerHTML='<div class="smallNote">Searching Jamaica for that location...</div>';
   try{
@@ -484,7 +484,7 @@ async function selectDeliverySearchResult(i){
   try{
     const q=await getDeliveryQuote();
     if(status)status.innerHTML='<b style="color:#0c6b43">✅ Address location selected.</b><br>'
-      +'Distance from '+(($('loc')&&$('loc').value==='cobbla')?'Cobbla':'Linstead')+': <b>'+q.distance_km+' km</b><br>'
+      +'Distance from '+((( $('loc')&&$('loc').value) || selectedStore)==='cobbla'?'Cobbla':'Linstead')+': <b>'+q.distance_km+' km</b><br>'
       +'Delivery fee: <b>'+money(q.delivery_fee_jmd)+'</b>'
       +(q.min_order_jmd?'<br>Minimum food order: <b>'+money(q.min_order_jmd)+'</b>':'')
       +'<br><span class="smallNote">The driver will navigate to this map location.</span>';
@@ -541,7 +541,7 @@ function checkout(){
              <button type="button" class="btn" style="margin:0 0 8px;background:#fff4dc;color:#6b4b00;box-shadow:none" onclick="searchDeliveryAddress(this)">🔎 Find Address / Landmark</button>
              <div id="addressSearchResults"></div>
              <div id="gpsStatus" class="smallNote"><b>Required for delivery:</b> Use your live location or search for an address/landmark. The selected map point is used to calculate the fee and guide the driver.</div>`
-          : `<div class="notice">Pickup from <b>${$('loc')&&$('loc').value==='cobbla'?'Cobbla, Manchester':'Linstead Courtyard'}</b>.</div>`}
+          : `<div class="notice">Pickup from <b>${((( $('loc')&&$('loc').value) || selectedStore)==='cobbla')?'Cobbla, Manchester':'Linstead Courtyard'}</b>.</div>`}
         <label class="checkoutLabel">Special instructions</label>
         <textarea name="notes" placeholder="Example: no sauce, call when outside, etc."></textarea>
       </div>
@@ -576,7 +576,7 @@ async function place(e){
   if(!hs.storeOpen){alert('Store Closed');return}
   if(service==='delivery'&&!hs.deliveryOpen){alert(hs.isSun?'Sorry, no delivery is available on Sundays.':'Sorry, no delivery is available after 7pm.');return}
   let f=new FormData(e.target),phone=f.get('phone'),pin=f.get('pin')||'',redeem=Number(f.get('redeem')||0);
-  let locEl=$('loc'),locationId=locEl?locEl.value:'linstead';
+  let locEl=$('loc'),locationId=locEl?locEl.value:selectedStore;
   if(service==='delivery'){
     if(!deliveryCoords){
       alert('Delivery selected. Please use your current location or search and select an address/landmark so we can calculate your delivery fee.');
