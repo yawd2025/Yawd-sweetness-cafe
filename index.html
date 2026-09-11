@@ -200,7 +200,7 @@ select,input,textarea{width:100%;padding:13px;border:1px solid var(--line);borde
 <nav class="bottom"><button onclick="showMenu()">🏠<br>Menu</button><button onclick="openCart()">🛍️<br>Cart</button><button onclick="showOrders()">📋<br>My Orders</button><button onclick="showRewards()">⭐<br>Rewards</button></nav><div id="modal"></div>
 <script>
 const API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-sweetness';const LOCATION_API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-delivery-location';
-let menu=[],categories=[],cart=[],service='pickup',orders=JSON.parse(localStorage.ysOrders||'[]'),tracker=null,timer=null,activeCat='all',customizing=null;
+let menu=[],categories=[],cart=[],service='pickup',orders=JSON.parse(localStorage.ysOrders||'[]'),tracker=null,timer=null,activeCat='all',customizing=null,deliveryCoords=null,deliveryQuote=null;
 const $=x=>document.getElementById(x),money=n=>'J$'+Number(n||0).toLocaleString();
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function jmParts(d=new Date()){

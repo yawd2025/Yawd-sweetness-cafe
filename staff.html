@@ -16,15 +16,55 @@ input,textarea,select{width:100%;padding:11px;border:1px solid #ddd;border-radiu
 </style></head>
 <body><header><div class="w"><b>YAWD SWEETNESS</b><br><small>STAFF / ADMIN • MENU BUILDER</small></div></header><main class="w main" id="root"></main>
 <script>
-const API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-sweetness';const REWARDS_API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-instore-rewards';const LOCATION_API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-delivery-location';
+const API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-sweetness';const REWARDS_API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-instore-rewards';const LOCATION_API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-delivery-location';const PUSH_API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-staff-push';
 let token=localStorage.ysStaffToken||'',me=null,orders=[],menuData={items:[],categories:[]},view='orders',optionEditor=null,adminCat=localStorage.ysAdminCat||'all';
 const $=x=>document.getElementById(x),money=n=>'J$'+Number(n||0).toLocaleString();
 function jmFormat(value){if(!value)return '';try{return new Intl.DateTimeFormat('en-JM',{timeZone:'America/Jamaica',dateStyle:'medium',timeStyle:'short'}).format(new Date(value))+' Jamaica time'}catch{return ''}}
 
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+let staffPushState='checking';
+function urlB64ToUint8Array(base64String){
+  const padding='='.repeat((4-base64String.length%4)%4);
+  const base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+  const raw=atob(base64),out=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++)out[i]=raw.charCodeAt(i);
+  return out;
+}
+async function pushCall(body){
+  let r=await fetch(PUSH_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body||{})});
+  let d=await r.json();if(!r.ok)throw Error(d.error||'Notification setup failed');return d;
+}
+function pushBanner(){
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window))
+    return '<div class="card"><b>🔔 Staff Alerts</b><div class="muted">Background notifications are not supported by this browser.</div></div>';
+  if(Notification.permission==='denied')
+    return '<div class="card"><b>🔕 Staff Alerts blocked</b><div class="muted">Notifications are blocked in this browser. Allow notifications for this site in the browser settings.</div></div>';
+  if(staffPushState==='enabled')
+    return '<div class="card good"><b>🔔 Staff Alerts ON</b><div class="muted">New-order alerts can arrive even when this staff page is not open.</div></div>';
+  return '<div class="card"><b>🔔 Staff Alerts</b><div class="muted">Turn this on once on this device to receive new-order alerts while away from the website.</div><button class="mini good" style="margin-top:8px" onclick="enableStaffAlerts()">Enable Staff Alerts</button></div>';
+}
+async function ensureStaffPush(askPermission=false){
+  if(!token||!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){staffPushState='unsupported';return}
+  try{
+    const reg=await navigator.serviceWorker.register('/staff-sw.js');
+    if(Notification.permission==='default'&&askPermission)await Notification.requestPermission();
+    if(Notification.permission!=='granted'){staffPushState='off';render();return}
+    const cfg=await pushCall({action:'config'});
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8Array(cfg.vapid_public_key)});
+    await pushCall({action:'subscribe',token,subscription:sub.toJSON()});
+    staffPushState='enabled';render();
+  }catch(err){
+    staffPushState='off';
+    if(askPermission)alert(err.message);
+    render();
+  }
+}
+async function enableStaffAlerts(){await ensureStaffPush(true)}
+
 async function call(a,b){let r=await fetch(API+'?api='+a,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b||{})});let d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}async function rewardsCall(body){let r=await fetch(REWARDS_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,...body})});let d=await r.json();if(!r.ok)throw Error(d.error||'Rewards request failed');return d}
-async function boot(){if(token){try{me=await call('staff-login',{token});return loadOrders()}catch{token='';localStorage.removeItem('ysStaffToken')}}render()}
-async function login(e){e.preventDefault();token=new FormData(e.target).get('token').trim();try{me=await call('staff-login',{token});localStorage.ysStaffToken=token;loadOrders()}catch(err){alert(err.message)}}
+async function boot(){if(token){try{me=await call('staff-login',{token});await loadOrders();ensureStaffPush(false);return}catch{token='';localStorage.removeItem('ysStaffToken')}}render()}
+async function login(e){e.preventDefault();token=new FormData(e.target).get('token').trim();try{me=await call('staff-login',{token});localStorage.ysStaffToken=token;await loadOrders();ensureStaffPush(false)}catch(err){alert(err.message)}}
 function logout(){localStorage.removeItem('ysStaffToken');token='';me=null;render()}
 async function loadOrders(){
   orders=await call('staff-orders',{token});
@@ -138,7 +178,7 @@ async function navigateDelivery(orderId,address){
 }
 function render(){
  let r=$('root');if(!me){r.innerHTML='<div class="card"><h2>Staff sign in</h2><form onsubmit="login(event)"><input name="token" type="password" placeholder="Access code" required><button class="btn">Sign in</button></form></div>';return}
- let nav='<div class="row"><div><b>'+esc(me.label)+'</b><div class="muted">'+(me.is_admin?'Owner/Admin':'Location staff')+'</div></div><button class="mini" onclick="logout()">Logout</button></div><div class="tabs"><button class="mini" onclick="loadOrders()">Orders</button>'+(me.is_admin?'<button class="mini" onclick="loadMenu()">Menu Manager</button><button class="mini" onclick="loyaltyPage()">⭐ Loyalty Accounts</button><button class="mini" onclick="inStoreRewardsPage()">🏪 In-Store Rewards</button>':'')+'</div>';
+ let nav='<div class="row"><div><b>'+esc(me.label)+'</b><div class="muted">'+(me.is_admin?'Owner/Admin':'Location staff')+'</div></div><button class="mini" onclick="logout()">Logout</button></div><div class="tabs"><button class="mini" onclick="loadOrders()">Orders</button>'+(me.is_admin?'<button class="mini" onclick="loadMenu()">Menu Manager</button><button class="mini" onclick="loyaltyPage()">⭐ Loyalty Accounts</button><button class="mini" onclick="inStoreRewardsPage()">🏪 In-Store Rewards</button>':'')+'</div>'+pushBanner();
  if(view==='orders'){r.innerHTML=nav+'<h2>Incoming orders</h2>'+(!orders.length?'<div class="card">No orders yet.</div>':orders.map(o=>'<div class="card order"><div class="row"><b>YS'+o.order_number+'</b><b>'+esc(o.status)+'</b></div><div class="muted" style="margin-top:6px">🕒 Placed: '+esc(jmFormat(o.created_at))+'</div><p><b>'+esc(o.customer_name)+'</b> • '+esc(o.phone)+'<br>'+esc(o.location_id)+' • '+esc(o.fulfillment)+'</p>'+(o.fulfillment==='delivery'?'<div class="deliveryBox"><b>📍 Delivery address</b><br>'+esc(o.delivery_address||'No address provided')+'<br><button class="mini navBtn" style="margin-top:9px" onclick="navigateDelivery(\''+o.id+'\',\''+esc(o.delivery_address||'').replace(/'/g,"\\'")+'\')">🧭 Navigate to Customer</button></div>':'')+(o.notes?'<div class="instructionsBox"><b>📝 CUSTOMER INSTRUCTIONS</b><br>'+esc(o.notes).replace(/\n/g,'<br>')+'</div>':'<div class="muted" style="margin:8px 0">📝 No special instructions.</div>')+'<p>'+o.order_items.map(i=>i.quantity+'× '+esc(i.item_name)+(i.selections&&i.selections.length?'<div class="muted" style="margin:5px 0 8px 12px">'+selectionText(i.selections)+'</div>':'')).join('')+'</p>'+(o.fulfillment==='delivery'?'<div class="deliveryBox"><b>🚗 Delivery pricing</b><br>Fee: <b>'+money(o.delivery_fee_jmd||0)+'</b>'+(o.delivery_distance_km!=null?'<br>Distance: <b>'+o.delivery_distance_km+' km</b>':'')+'</div>':'')+'<p>Cash due: <b>'+money(o.total_jmd)+'</b></p><div class="actions"><button onclick="setStatus(\''+o.id+'\',\'preparing\')">Preparing</button><button onclick="setStatus(\''+o.id+'\',\'ready\')">Ready</button>'+(o.fulfillment==='delivery'?'<button onclick="setStatus(\''+o.id+'\',\'out_for_delivery\')">Out for delivery</button>':'')+'<button onclick="setStatus(\''+o.id+'\',\'completed\')">Completed</button></div></div>').join(''));return}
  if(view==='instore'){
   r.innerHTML=nav+
