@@ -243,7 +243,7 @@ async function getDeliveryQuote(){
 }
 function deliveryFeeSummary(){
   if(service!=='delivery')return '';
-  if(!deliveryQuote)return '<div class="summaryRow"><span>Delivery fee</span><b>Use Current Location</b></div>';
+  if(!deliveryQuote)return '<div class="summaryRow"><span>Delivery fee</span><b>Choose or search location</b></div>';
   return '<div class="summaryRow"><span>Distance</span><b>'+deliveryQuote.distance_km+' km</b></div>'
     +'<div class="summaryRow"><span>Delivery fee</span><b>'+money(deliveryQuote.delivery_fee_jmd)+'</b></div>'
     +(deliveryQuote.min_order_jmd?'<div class="summaryRow"><span>Minimum food order</span><b>'+money(deliveryQuote.min_order_jmd)+'</b></div>':'');
@@ -423,7 +423,7 @@ function captureDeliveryLocation(btn){
       try{
         const q=await getDeliveryQuote();
         if(status)status.innerHTML='<b style="color:#0c6b43">✅ Live location saved.</b><br>'
-          +'Distance from Linstead: <b>'+q.distance_km+' km</b><br>'
+          +'Distance from '+(($('loc')&&$('loc').value==='cobbla')?'Cobbla':'Linstead')+': <b>'+q.distance_km+' km</b><br>'
           +'Delivery fee: <b>'+money(q.delivery_fee_jmd)+'</b>'
           +(q.min_order_jmd?'<br>Minimum food order: <b>'+money(q.min_order_jmd)+'</b>':'')
           +'<br><span class="smallNote">The driver can also use this location for navigation.</span>';
@@ -445,6 +445,55 @@ function captureDeliveryLocation(btn){
     },
     {enableHighAccuracy:true,timeout:15000,maximumAge:60000}
   );
+}
+async function searchDeliveryAddress(btn){
+  const input=$('deliveryAddress');
+  const results=$('addressSearchResults');
+  const status=$('gpsStatus');
+  const query=(input&&input.value||'').trim();
+  if(query.length<3){alert('Type an address, community, business or landmark first.');return}
+  const locEl=$('loc'),locationId=locEl?locEl.value:'linstead';
+  if(btn){btn.disabled=true;btn.textContent='🔎 Searching...'}
+  if(results)results.innerHTML='<div class="smallNote">Searching Jamaica for that location...</div>';
+  try{
+    const r=await fetch(LOCATION_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'search',query,location_id:locationId})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||'Could not search for that location.');
+    const list=d.results||[];
+    if(!list.length){
+      if(results)results.innerHTML='<div class="smallNote" style="color:#a22a1c"><b>No matching map location found.</b><br>Try a nearby landmark, business, road or community name.</div>';
+      return;
+    }
+    window._deliverySearchResults=list;
+    if(results)results.innerHTML='<div class="smallNote" style="margin:6px 0"><b>Select the correct location:</b></div>'+list.map((x,i)=>'<button type="button" class="mini" style="display:block;width:100%;text-align:left;margin:6px 0;padding:10px" onclick="selectDeliverySearchResult('+i+')">📍 '+esc(x.name)+(Number.isFinite(x.distance_km)?' • '+x.distance_km+' km from store':'')+'</button>').join('');
+  }catch(err){
+    if(results)results.innerHTML='<div class="smallNote" style="color:#a22a1c"><b>⚠️ '+esc(err.message)+'</b></div>';
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='🔎 Find Address / Landmark'}
+  }
+}
+async function selectDeliverySearchResult(i){
+  const item=(window._deliverySearchResults||[])[i];
+  if(!item)return;
+  deliveryCoords={lat:Number(item.lat),lng:Number(item.lng)};
+  deliveryQuote=null;
+  const input=$('deliveryAddress');if(input)input.value=item.name;
+  const results=$('addressSearchResults');if(results)results.innerHTML='';
+  const status=$('gpsStatus');
+  if(status)status.innerHTML='Calculating delivery fee for <b>'+esc(item.name)+'</b>...';
+  try{
+    const q=await getDeliveryQuote();
+    if(status)status.innerHTML='<b style="color:#0c6b43">✅ Address location selected.</b><br>'
+      +'Distance from '+(($('loc')&&$('loc').value==='cobbla')?'Cobbla':'Linstead')+': <b>'+q.distance_km+' km</b><br>'
+      +'Delivery fee: <b>'+money(q.delivery_fee_jmd)+'</b>'
+      +(q.min_order_jmd?'<br>Minimum food order: <b>'+money(q.min_order_jmd)+'</b>':'')
+      +'<br><span class="smallNote">The driver will navigate to this map location.</span>';
+    updateCheckoutDeliverySummary();
+  }catch(err){
+    deliveryQuote=null;
+    if(status)status.innerHTML='<b style="color:#a22a1c">⚠️ '+esc(err.message)+'</b>';
+    updateCheckoutDeliverySummary();
+  }
 }
 async function saveDeliveryLocation(orderId,phone){
   if(service!=='delivery'||!deliveryCoords)return null;
@@ -484,12 +533,14 @@ function checkout(){
 
       <div class="checkoutSection">
         <h3>${service==='delivery'?'Delivery details':'Pickup details'}</h3>${service==='delivery'?deliveryMessageHtml():''}
-        ${service==='delivery'?'<div class="notice" style="background:#eef9f2;border:1px solid #b8dfc6;color:#0c6b43"><b>🚗 Delivery selected</b><br>Enter your address, then tap <b>Use Current Location</b>. We will calculate the delivery fee before you place the order.</div>':''}
+        ${service==='delivery'?'<div class="notice" style="background:#eef9f2;border:1px solid #b8dfc6;color:#0c6b43"><b>🚗 Delivery selected</b><br>Choose <b>Use Current Location</b> or type an address/landmark such as <b>Spaldings Police Station</b> and tap <b>Find Address / Landmark</b>.</div>':''}
         ${service==='delivery'
-          ? `<label class="checkoutLabel">Delivery address</label>
-             <textarea name="address" placeholder="House number, street/community and any landmark" required></textarea>
+          ? `<label class="checkoutLabel">Delivery address / landmark</label>
+             <textarea id="deliveryAddress" name="address" placeholder="Example: Spaldings Police Station, business, road, community or house directions" required></textarea>
              <button type="button" class="btn" style="margin:6px 0 8px;background:#e9f7ee;color:#0c6b43;box-shadow:none" onclick="captureDeliveryLocation(this)">📍 Use Current Location</button>
-             <div id="gpsStatus" class="smallNote"><b>Required for delivery:</b> Tap “Use Current Location” so we can calculate your delivery fee and send the driver to the correct location.</div>`
+             <button type="button" class="btn" style="margin:0 0 8px;background:#fff4dc;color:#6b4b00;box-shadow:none" onclick="searchDeliveryAddress(this)">🔎 Find Address / Landmark</button>
+             <div id="addressSearchResults"></div>
+             <div id="gpsStatus" class="smallNote"><b>Required for delivery:</b> Use your live location or search for an address/landmark. The selected map point is used to calculate the fee and guide the driver.</div>`
           : `<div class="notice">Pickup from <b>${$('loc')&&$('loc').value==='cobbla'?'Cobbla, Manchester':'Linstead Courtyard'}</b>.</div>`}
         <label class="checkoutLabel">Special instructions</label>
         <textarea name="notes" placeholder="Example: no sauce, call when outside, etc."></textarea>
@@ -528,7 +579,7 @@ async function place(e){
   let locEl=$('loc'),locationId=locEl?locEl.value:'linstead';
   if(service==='delivery'){
     if(!deliveryCoords){
-      alert('Delivery selected. Please tap “Use Current Location” so we can calculate your delivery fee.');
+      alert('Delivery selected. Please use your current location or search and select an address/landmark so we can calculate your delivery fee.');
       const gps=$('gpsStatus');if(gps)gps.scrollIntoView({behavior:'smooth',block:'center'});
       return
     }
