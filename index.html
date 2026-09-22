@@ -200,7 +200,7 @@ select,input,textarea{width:100%;padding:13px;border:1px solid var(--line);borde
 <nav class="bottom"><button onclick="showMenu()">🏠<br>Menu</button><button onclick="openCart()">🛍️<br>Cart</button><button onclick="showOrders()">📋<br>My Orders</button><button onclick="showRewards()">⭐<br>Rewards</button></nav><div id="modal"></div>
 <script>
 const API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-sweetness';const LOCATION_API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-delivery-location';
-let menu=[],categories=[],cart=[],service='pickup',orders=JSON.parse(localStorage.ysOrders||'[]'),tracker=null,timer=null,activeCat='all',customizing=null,deliveryCoords=null,deliveryQuote=null,selectedStore=localStorage.ysStore||'linstead';
+let menu=[],categories=[],cart=[],service='pickup',orders=JSON.parse(localStorage.ysOrders||'[]'),tracker=null,timer=null,activeCat='all',customizing=null,deliveryCoords=null,deliveryQuote=null,selectedStore=localStorage.ysStore||'linstead',deliveryEnabled=true;
 const $=x=>document.getElementById(x),money=n=>'J$'+Number(n||0).toLocaleString();
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function jmParts(d=new Date()){
@@ -226,6 +226,7 @@ function hoursHtml(){
 }
 function deliveryMessageHtml(){
   const s=jmStatus();
+  if(!deliveryEnabled)return '<div class="deliveryAlert">🚫 Delivery is currently OFF for this location. Pickup is still available.</div>';
   if(s.isSun)return '<div class="deliveryAlert">🚫 No delivery is available on Sundays.</div>';
   if(s.mins>=19*60)return '<div class="deliveryAlert">🚫 Sorry, no delivery is available after 7pm.</div>';
   return '<div class="deliveryOk">🚗 Delivery is available until 7pm today.</div>';
@@ -260,6 +261,7 @@ function updateCheckoutDeliverySummary(){
 function chooseService(kind,goCheckout=false){
   const s=jmStatus();
   if(!s.storeOpen){alert('Store Closed');service='pickup';openCart();return}
+  if(kind==='delivery'&&!deliveryEnabled){alert('Delivery is currently OFF for this location. Please choose pickup.');service='pickup';openCart();return}
   if(kind==='delivery'&&!s.deliveryOpen){
     alert(s.isSun?'Sorry, no delivery is available on Sundays.':'Sorry, no delivery is available after 7pm.');
     service='pickup';openCart();return
@@ -271,7 +273,16 @@ function chooseService(kind,goCheckout=false){
 }
 
 async function call(a,b){let r=await fetch(API+'?api='+a,{method:b?'POST':'GET',headers:{'content-type':'application/json'},body:b?JSON.stringify(b):null});let d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
-async function boot(){if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});let d=await call('menu');menu=d.items||[];categories=d.categories||[];if(d.settings&&d.settings.logo_url)$('brand').innerHTML='<div class="brandShell"><img class="logo" src="'+esc(d.settings.logo_url)+'"><div class="brandWords"><div class="brandName">YAWD SWEETNESS CAFÉ</div><div class="brandLine">BREWING SMILES DAILY</div><div class="brandPill">🇯🇲 JAMAICAN FLAVOR • MADE WITH LOVE</div></div></div>';renderNotify();showMenu()}
+async function loadStoreMenu(redraw=true){
+  let r=await fetch(API+'?api=menu&location_id='+encodeURIComponent(selectedStore),{headers:{'cache-control':'no-cache'}});
+  let d=await r.json();if(!r.ok)throw Error(d.error||'Menu unavailable');
+  menu=d.items||[];categories=d.categories||[];deliveryEnabled=d.settings?.delivery_enabled!==false;
+  if(!deliveryEnabled&&service==='delivery'){service='pickup';deliveryCoords=null;deliveryQuote=null}
+  if(d.settings&&d.settings.logo_url)$('brand').innerHTML='<div class="brandShell"><img class="logo" src="'+esc(d.settings.logo_url)+'"><div class="brandWords"><div class="brandName">YAWD SWEETNESS CAFÉ</div><div class="brandLine">BREWING SMILES DAILY</div><div class="brandPill">🇯🇲 JAMAICAN FLAVOR • MADE WITH LOVE</div></div></div>';
+  if(redraw)showMenu();
+}
+async function changeStore(v){selectedStore=v;localStorage.ysStore=selectedStore;deliveryCoords=null;deliveryQuote=null;await loadStoreMenu(true)}
+async function boot(){if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});await loadStoreMenu(false);renderNotify();showMenu()}
 function renderNotify(){if(!('Notification' in window))return;if(Notification.permission==='default')$('notifyBox').innerHTML='<div class="notify"><b>🔔 Order updates</b><p class="muted">Allow notifications for order status changes.</p><button class="mini" onclick="enableNotifications()">Enable notifications</button></div>';else $('notifyBox').innerHTML=''}
 async function enableNotifications(){try{await Notification.requestPermission();renderNotify()}catch{}}
 function sendStatusNotification(orderNo,status){if(!('Notification'in window)||Notification.permission!=='granted')return;const text=info[status]||status;if(navigator.serviceWorker&&navigator.serviceWorker.controller)navigator.serviceWorker.controller.postMessage({type:'notify',title:'Yawd Sweetness • '+orderNo,body:text});else try{new Notification('Yawd Sweetness • '+orderNo,{body:text})}catch{}}
@@ -312,7 +323,7 @@ function showMenu(){
     </section>
     <div class="locationCard">
       <div class="locationLabel">📍 PICK YOUR YAWD</div>
-      <select id="loc" onchange="selectedStore=this.value;localStorage.ysStore=selectedStore;deliveryCoords=null;deliveryQuote=null;">
+      <select id="loc" onchange="changeStore(this.value)">
         <option value="linstead" ${selectedStore==='linstead'?'selected':''}>Linstead Courtyard</option>
         <option value="cobbla" ${selectedStore==='cobbla'?'selected':''}>Cobbla, Manchester</option>
       </select>
@@ -506,6 +517,7 @@ function checkout(){
   if(!cart.length)return openCart();
   const hs=jmStatus();
   if(!hs.storeOpen){alert('Store Closed');return}
+  if(service==='delivery'&&!deliveryEnabled){alert('Delivery is currently OFF for this location. Please choose pickup.');service='pickup';openCart();return}
   if(service==='delivery'&&!hs.deliveryOpen){alert(hs.isSun?'Sorry, no delivery is available on Sundays.':'Sorry, no delivery is available after 7pm.');service='pickup';openCart();return}
   const sub=subtotal();
   const review=cart.map(x=>`<div class="reviewItem">
@@ -574,6 +586,7 @@ async function place(e){
   e.preventDefault();
   const hs=jmStatus();
   if(!hs.storeOpen){alert('Store Closed');return}
+  if(service==='delivery'&&!deliveryEnabled){alert('Delivery is currently OFF for this location. Please choose pickup.');return}
   if(service==='delivery'&&!hs.deliveryOpen){alert(hs.isSun?'Sorry, no delivery is available on Sundays.':'Sorry, no delivery is available after 7pm.');return}
   let f=new FormData(e.target),phone=f.get('phone'),pin=f.get('pin')||'',redeem=Number(f.get('redeem')||0);
   let locEl=$('loc'),locationId=locEl?locEl.value:selectedStore;
@@ -636,10 +649,10 @@ async function place(e){
   }
 }
 const info={received:'Order received',preparing:'Preparing your order',ready:'Your order is ready!',out_for_delivery:'Out for delivery',completed:'Order completed',cancelled:'Order cancelled'};
-function trackView(){let flow=tracker.fulfillment==='delivery'?['received','preparing','ready','out_for_delivery','completed']:['received','preparing','ready','completed'],ix=flow.indexOf(tracker.status);$('modal').innerHTML='<div class="ov"><div class="dr"><span class="tag">LIVE TRACKING</span><h1>'+esc(tracker.n)+'</h1><h2>'+esc(info[tracker.status]||tracker.status)+'</h2>'+flow.map((s,i)=>'<div class="step '+(i<ix?'done':i===ix?'current':'')+'">'+(i<ix?'✅':'○')+' '+esc(info[s])+'</div>').join('')+'<div class="notice">Cash due: <b>'+money(tracker.total)+'</b></div><button class="btn" onclick="refreshTrack()">Check now</button><button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Close</button></div></div>'}
-async function refreshTrack(){if(!tracker)return;try{let old=tracker.status,d=await call('track-order',{id:tracker.id,phone:tracker.phone});tracker.status=d.status;tracker.total=d.total_jmd;let o=orders.find(x=>x.id===tracker.id);if(o)Object.assign(o,tracker);localStorage.ysOrders=JSON.stringify(orders);if(old!==tracker.status)sendStatusNotification(tracker.n,tracker.status);trackView();if(['completed','cancelled'].includes(tracker.status)&&timer){clearInterval(timer);timer=null}}catch{}}
+function trackView(){let flow=tracker.fulfillment==='delivery'?['received','preparing','ready','out_for_delivery','completed']:['received','preparing','ready','completed'],ix=flow.indexOf(tracker.status);$('modal').innerHTML='<div class="ov"><div class="dr"><span class="tag">LIVE TRACKING</span><h1>'+esc(tracker.n)+'</h1><h2>'+esc(info[tracker.status]||tracker.status)+'</h2>'+(tracker.status==='cancelled'&&tracker.cancellation_reason?'<div class="notice" style="background:#fff0ee;border-color:#f4b8b2;color:#9b1c16"><b>Cancellation reason:</b><br>'+esc(tracker.cancellation_reason)+'</div>':'')+flow.map((s,i)=>'<div class="step '+(i<ix?'done':i===ix?'current':'')+'">'+(i<ix?'✅':'○')+' '+esc(info[s])+'</div>').join('')+'<div class="notice">Cash due: <b>'+money(tracker.total)+'</b></div><button class="btn" onclick="refreshTrack()">Check now</button><button class="btn" style="background:#ddd;margin-top:8px" onclick="closeM()">Close</button></div></div>'}
+async function refreshTrack(){if(!tracker)return;try{let old=tracker.status,d=await call('track-order',{id:tracker.id,phone:tracker.phone});tracker.status=d.status;tracker.total=d.total_jmd;tracker.cancellation_reason=d.cancellation_reason||'';let o=orders.find(x=>x.id===tracker.id);if(o)Object.assign(o,tracker);localStorage.ysOrders=JSON.stringify(orders);if(old!==tracker.status)sendStatusNotification(tracker.n,tracker.status);trackView();if(['completed','cancelled'].includes(tracker.status)&&timer){clearInterval(timer);timer=null}}catch{}}
 function startTrack(){if(timer)clearInterval(timer);timer=setInterval(refreshTrack,10000)}
-function showOrders(){$('view').innerHTML='<section class="hero"><span class="tag">MY ORDERS</span><h1>Order history</h1></section>'+(!orders.length?'<div class="card">No saved orders yet.</div>':orders.map(o=>'<div class="card order"><div class="row"><b>'+esc(o.n)+'</b><span>'+esc(o.status)+'</span></div><div class="orderTime">🕒 '+esc(jmFormat(o.created_at))+'</div><p>'+money(o.total)+'</p><div class="row"><button class="mini" onclick="trackSaved(\''+o.id+'\')">Track</button><button class="mini" onclick="reorder(\''+o.id+'\')">🔁 Reorder</button></div></div>').join(''))}
+function showOrders(){$('view').innerHTML='<section class="hero"><span class="tag">MY ORDERS</span><h1>Order history</h1></section>'+(!orders.length?'<div class="card">No saved orders yet.</div>':orders.map(o=>'<div class="card order"><div class="row"><b>'+esc(o.n)+'</b><span>'+esc(o.status)+'</span></div><div class="orderTime">🕒 '+esc(jmFormat(o.created_at))+'</div><p>'+money(o.total)+'</p>'+(o.status==='cancelled'&&o.cancellation_reason?'<div class="notice" style="background:#fff0ee;border-color:#f4b8b2;color:#9b1c16"><b>Cancellation reason:</b><br>'+esc(o.cancellation_reason)+'</div>':'')+'<div class="row"><button class="mini" onclick="trackSaved(\''+o.id+'\')">Track</button><button class="mini" onclick="reorder(\''+o.id+'\')">🔁 Reorder</button></div></div>').join(''))}
 function trackSaved(id){tracker=orders.find(x=>x.id===id);if(tracker){trackView();startTrack()}}
 function reorder(id){let o=orders.find(x=>x.id===id);cart=[];(o?.items||[]).forEach(i=>{let m=menu.find(x=>x.id===i.id);if(m&&!m.sold_out)addConfigured(m,i.selected_value_ids||[])});openCart()}
 function showRewards(){$('view').innerHTML='<section class="hero"><span class="tag">YAWD REWARDS</span><h1>Your rewards wallet</h1><p>J$1 back for every J$100 actually paid.</p></section><div class="card"><form onsubmit="checkRewards(event)"><input name="phone" placeholder="Phone number" required><input name="pin" placeholder="Your 4-digit Loyalty PIN" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required><button class="btn">Check Balance</button></form></div><div id="rewardResult"></div>'}
