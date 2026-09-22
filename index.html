@@ -200,7 +200,7 @@ select,input,textarea{width:100%;padding:13px;border:1px solid var(--line);borde
 <nav class="bottom"><button onclick="showMenu()">🏠<br>Menu</button><button onclick="openCart()">🛍️<br>Cart</button><button onclick="showOrders()">📋<br>My Orders</button><button onclick="showRewards()">⭐<br>Rewards</button></nav><div id="modal"></div>
 <script>
 const API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-sweetness';const LOCATION_API='https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-delivery-location';
-let menu=[],categories=[],cart=[],service='pickup',orders=JSON.parse(localStorage.ysOrders||'[]'),tracker=null,timer=null,activeCat='all',customizing=null,deliveryCoords=null,deliveryQuote=null,selectedStore=localStorage.ysStore||'linstead';
+let menu=[],categories=[],cart=[],service='pickup',orders=JSON.parse(localStorage.ysOrders||'[]'),tracker=null,timer=null,activeCat='all',customizing=null,deliveryCoords=null,deliveryQuote=null,deliveryMethod='',selectedStore=localStorage.ysStore||'linstead';
 const $=x=>document.getElementById(x),money=n=>'J$'+Number(n||0).toLocaleString();
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function jmParts(d=new Date()){
@@ -411,6 +411,15 @@ function openCart(){
   </div></div>`;
 }
 
+function chooseDeliveryMethod(method){
+  deliveryMethod=method;deliveryCoords=null;deliveryQuote=null;
+  const live=$('liveLocationBox'),address=$('addressLocationBox'),status=$('gpsStatus'),results=$('addressSearchResults');
+  if(live)live.style.display=method==='live'?'block':'none';
+  if(address)address.style.display=method==='address'?'block':'none';
+  if(status)status.innerHTML=method==='live'?'<b>Live location selected.</b> Tap the button below to share your location.':'<b>Address / landmark selected.</b> Type the location below and choose the correct map result.';
+  if(results)results.innerHTML='';
+  updateCheckoutDeliverySummary();
+}
 function captureDeliveryLocation(btn){
   if(!navigator.geolocation){alert('Location sharing is not supported on this device. Delivery requires your current location so the app can calculate the fee.');return}
   let status=$('gpsStatus');
@@ -418,6 +427,7 @@ function captureDeliveryLocation(btn){
   if(status)status.innerHTML='Waiting for your phone location permission...';
   navigator.geolocation.getCurrentPosition(
     async p=>{
+      deliveryMethod='live';
       deliveryCoords={lat:p.coords.latitude,lng:p.coords.longitude};
       deliveryQuote=null;
       try{
@@ -475,6 +485,7 @@ async function searchDeliveryAddress(btn){
 async function selectDeliverySearchResult(i){
   const item=(window._deliverySearchResults||[])[i];
   if(!item)return;
+  deliveryMethod='address';
   deliveryCoords={lat:Number(item.lat),lng:Number(item.lng)};
   deliveryQuote=null;
   const input=$('deliveryAddress');if(input)input.value=item.name;
@@ -533,14 +544,23 @@ function checkout(){
 
       <div class="checkoutSection">
         <h3>${service==='delivery'?'Delivery details':'Pickup details'}</h3>${service==='delivery'?deliveryMessageHtml():''}
-        ${service==='delivery'?'<div class="notice" style="background:#eef9f2;border:1px solid #b8dfc6;color:#0c6b43"><b>🚗 Delivery selected</b><br>Choose <b>Use Current Location</b> or type an address/landmark such as <b>Spaldings Police Station</b> and tap <b>Find Address / Landmark</b>.</div>':''}
+        ${service==='delivery'?'<div class="notice" style="background:#eef9f2;border:1px solid #b8dfc6;color:#0c6b43"><b>🚗 Delivery selected</b><br>Choose <b>one</b>: share your <b>Live Location</b> or enter an <b>Address / Landmark</b>. You do not need both.</div>':''}
         ${service==='delivery'
-          ? `<label class="checkoutLabel">Delivery address / landmark</label>
-             <textarea id="deliveryAddress" name="address" placeholder="Example: Spaldings Police Station, business, road, community or house directions" required></textarea>
-             <button type="button" class="btn" style="margin:6px 0 8px;background:#e9f7ee;color:#0c6b43;box-shadow:none" onclick="captureDeliveryLocation(this)">📍 Use Current Location</button>
-             <button type="button" class="btn" style="margin:0 0 8px;background:#fff4dc;color:#6b4b00;box-shadow:none" onclick="searchDeliveryAddress(this)">🔎 Find Address / Landmark</button>
-             <div id="addressSearchResults"></div>
-             <div id="gpsStatus" class="smallNote"><b>Required for delivery:</b> Use your live location or search for an address/landmark. The selected map point is used to calculate the fee and guide the driver.</div>`
+          ? `<label class="checkoutLabel">Choose one delivery location method</label>
+             <div class="svc" style="margin:6px 0 10px">
+               <button type="button" onclick="chooseDeliveryMethod('live')">📍 Live Location</button>
+               <button type="button" onclick="chooseDeliveryMethod('address')">🏠 Address / Landmark</button>
+             </div>
+             <div id="liveLocationBox" style="display:none">
+               <button type="button" class="btn" style="margin:6px 0 8px;background:#e9f7ee;color:#0c6b43;box-shadow:none" onclick="captureDeliveryLocation(this)">📍 Share My Live Location</button>
+             </div>
+             <div id="addressLocationBox" style="display:none">
+               <label class="checkoutLabel">Delivery address / landmark</label>
+               <textarea id="deliveryAddress" name="address" placeholder="Example: Spaldings Police Station, business, road, community or house directions"></textarea>
+               <button type="button" class="btn" style="margin:0 0 8px;background:#fff4dc;color:#6b4b00;box-shadow:none" onclick="searchDeliveryAddress(this)">🔎 Find Address / Landmark</button>
+               <div id="addressSearchResults"></div>
+             </div>
+             <div id="gpsStatus" class="smallNote"><b>Required for delivery:</b> Choose either Live Location or Address / Landmark. You only need one.</div>`
           : `<div class="notice">Pickup from <b>${((( $('loc')&&$('loc').value) || selectedStore)==='cobbla')?'Cobbla, Manchester':'Linstead Courtyard'}</b>.</div>`}
         <label class="checkoutLabel">Special instructions</label>
         <textarea name="notes" placeholder="Example: no sauce, call when outside, etc."></textarea>
@@ -578,8 +598,9 @@ async function place(e){
   let f=new FormData(e.target),phone=f.get('phone'),pin=f.get('pin')||'',redeem=Number(f.get('redeem')||0);
   let locEl=$('loc'),locationId=locEl?locEl.value:selectedStore;
   if(service==='delivery'){
+    if(!deliveryMethod){alert('Please choose Live Location or Address / Landmark for delivery.');return}
     if(!deliveryCoords){
-      alert('Delivery selected. Please use your current location or search and select an address/landmark so we can calculate your delivery fee.');
+      alert(deliveryMethod==='live'?'Please tap Share My Live Location first.':'Please search your address/landmark and select the correct result first.');
       const gps=$('gpsStatus');if(gps)gps.scrollIntoView({behavior:'smooth',block:'center'});
       return
     }
@@ -588,12 +609,14 @@ async function place(e){
   let submitBtn=e.target.querySelector('button[type="submit"],button.btn');
   if(submitBtn){submitBtn.disabled=true;submitBtn.textContent='Placing order...'}
   try{
+    let deliveryAddress=f.get('address')||'';
+    if(service==='delivery'&&deliveryMethod==='live'&&!deliveryAddress)deliveryAddress='Live location shared';
     let d=await call('create-order',{
       location_id:locationId,
       customer_name:f.get('name'),
       phone,
       fulfillment:service,
-      delivery_address:f.get('address')||'',
+      delivery_address:deliveryAddress,
       notes:f.get('notes')||'',
       loyalty_pin:pin,
       redeem_jmd:redeem,
@@ -611,7 +634,7 @@ async function place(e){
       redeemed:d.loyalty_redeemed_jmd||0,fulfillment:service,created_at:d.created_at||new Date().toISOString(),
       items:cart.map(x=>({id:x.id,name:x.name,q:x.q,selected_value_ids:x.selected_value_ids,selection_summary:x.selection_summary}))
     };
-    orders.unshift(o);localStorage.ysOrders=JSON.stringify(orders);cart=[];tracker=o;deliveryCoords=null;startTrack();
+    orders.unshift(o);localStorage.ysOrders=JSON.stringify(orders);cart=[];tracker=o;deliveryCoords=null;deliveryQuote=null;deliveryMethod='';startTrack();
     $('modal').innerHTML=`<div class="ov"><div class="dr">
       <div class="confirmBox">
         <div style="font-size:42px">✅</div>
