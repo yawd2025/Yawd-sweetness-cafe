@@ -274,7 +274,7 @@ function chooseService(kind,goCheckout=false){
 
 async function call(a,b){let r=await fetch(API+'?api='+a,{method:b?'POST':'GET',headers:{'content-type':'application/json'},body:b?JSON.stringify(b):null});let d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
 async function loadStoreMenu(redraw=true){
-  let r=await fetch(API+'?api=menu',{headers:{'cache-control':'no-cache'}});
+  let r=await fetch('https://plnmcdkqpzpkuoqyggde.supabase.co/functions/v1/yawd-customer-menu',{headers:{'cache-control':'no-cache'}});
   let d=await r.json();if(!r.ok)throw Error(d.error||'Menu unavailable');
   menu=d.items||[];categories=d.categories||[];
   try{
