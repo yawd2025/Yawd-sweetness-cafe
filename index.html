@@ -69,6 +69,21 @@ header{
 .locationLabel{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:900;color:#5e4e40;margin-bottom:7px}
 .locationCard select{margin:0;background:#fffaf3;border:1px solid var(--line);font-weight:800}
 
+
+/* PROMOTIONAL DISPLAY CAROUSEL */
+.promoWrap{margin:12px 14px 2px;position:relative;overflow:hidden;border-radius:24px;box-shadow:var(--shadow);background:#2b140b;min-height:190px}
+.promoTrack{display:flex;transition:transform .55s ease;will-change:transform}
+.promoSlide{min-width:100%;height:210px;position:relative;overflow:hidden;background:linear-gradient(135deg,#2b140b,#6a371b);color:#fff}
+.promoSlide img{width:100%;height:100%;object-fit:cover;display:block}
+.promoShade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(18,9,5,.88) 0%,rgba(18,9,5,.48) 48%,rgba(18,9,5,.10) 100%)}
+.promoCopy{position:absolute;z-index:2;left:18px;top:18px;right:52%;text-shadow:0 2px 8px rgba(0,0,0,.4)}
+.promoKicker{display:inline-block;background:var(--gold2);color:#2b140b;border-radius:999px;padding:5px 9px;font-size:9px;font-weight:900;letter-spacing:1px;text-shadow:none}
+.promoTitle{font:900 25px/1.02 Georgia,serif;margin:10px 0 6px}.promoText{font-size:11px;line-height:1.35;color:#fff5e7;margin:0 0 12px}
+.promoCta{border:0;border-radius:999px;padding:8px 12px;background:#fff;color:#351a0d;font-size:10px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+.promoArrow{position:absolute;z-index:4;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.75);background:rgba(20,12,8,.58);color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center}
+.promoPrev{left:8px}.promoNext{right:8px}.promoDots{position:absolute;z-index:4;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:6px}.promoDot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.5);border:0;padding:0}.promoDot.on{background:#fff;transform:scale(1.2)}
+@media(max-width:520px){.promoSlide{height:185px}.promoCopy{right:43%;left:15px;top:15px}.promoTitle{font-size:21px}.promoText{font-size:10px}.promoWrap{min-height:185px}}
+
 /* CATEGORY NAV */
 .cats{display:flex;gap:9px;overflow-x:auto;padding:14px 14px 8px;scrollbar-width:none}
 .cats::-webkit-scrollbar{display:none}
@@ -275,6 +290,18 @@ async function boot(){if('serviceWorker' in navigator)navigator.serviceWorker.re
 function renderNotify(){if(!('Notification' in window))return;if(Notification.permission==='default')$('notifyBox').innerHTML='<div class="notify"><b>🔔 Order updates</b><p class="muted">Allow notifications for order status changes.</p><button class="mini" onclick="enableNotifications()">Enable notifications</button></div>';else $('notifyBox').innerHTML=''}
 async function enableNotifications(){try{await Notification.requestPermission();renderNotify()}catch{}}
 function sendStatusNotification(orderNo,status){if(!('Notification'in window)||Notification.permission!=='granted')return;const text=info[status]||status;if(navigator.serviceWorker&&navigator.serviceWorker.controller)navigator.serviceWorker.controller.postMessage({type:'notify',title:'Yawd Sweetness • '+orderNo,body:text});else try{new Notification('Yawd Sweetness • '+orderNo,{body:text})}catch{}}
+let promoIndex=0,promoTimer=null;
+function promoItems(){return menu.filter(m=>!m.sold_out&&m.image_url).slice(0,5)}
+function promoHtml(){
+  const p=promoItems();if(!p.length)return '';
+  return `<div class="promoWrap" id="promoWrap"><div class="promoTrack" id="promoTrack">${p.map((m,i)=>`<div class="promoSlide">
+    <img src="${esc(m.image_url)}" alt="${esc(m.name)}"><div class="promoShade"></div><div class="promoCopy"><span class="promoKicker">${i===0?'FEATURED':'TRY SOMETHING GOOD'}</span><div class="promoTitle">${esc(m.name)}</div><p class="promoText">Fresh from Yawd Sweetness Café • ${money(m.price_jmd)}</p><button class="promoCta" onclick="beginAdd('${m.id}')">ORDER NOW ›</button></div></div>`).join('')}</div>
+    ${p.length>1?`<button class="promoArrow promoPrev" onclick="movePromo(-1)" aria-label="Previous promotion">‹</button><button class="promoArrow promoNext" onclick="movePromo(1)" aria-label="Next promotion">›</button><div class="promoDots">${p.map((_,i)=>`<button class="promoDot ${i===promoIndex?'on':''}" onclick="goPromo(${i})" aria-label="Promotion ${i+1}"></button>`).join('')}</div>`:''}</div>`
+}
+function paintPromo(){const p=promoItems(),t=$('promoTrack');if(!t||!p.length)return;promoIndex=((promoIndex%p.length)+p.length)%p.length;t.style.transform=`translateX(-${promoIndex*100}%)`;document.querySelectorAll('.promoDot').forEach((d,i)=>d.classList.toggle('on',i===promoIndex))}
+function movePromo(d){promoIndex+=d;paintPromo();startPromo()}
+function goPromo(i){promoIndex=i;paintPromo();startPromo()}
+function startPromo(){clearInterval(promoTimer);if(promoItems().length>1)promoTimer=setInterval(()=>{promoIndex++;paintPromo()},4500)}
 function setCat(id){activeCat=id;showMenu()}
 function catIcon(name){let n=String(name||'').toLowerCase();if(n.includes('cake')||n.includes('pastr'))return'🧁';if(n.includes('ice cream'))return'🍨';if(n.includes('milkshake'))return'🥤';if(n.includes('slush'))return'🧊';if(n.includes('protein'))return'💪';if(n.includes('matcha'))return'🍵';if(n.includes('coffee'))return'☕';if(n.includes('refresh'))return'🍹';if(n.includes('frappe'))return'🥤';if(n.includes('smooth'))return'🍓';if(n.includes('add'))return'➕';if(n.includes('special'))return'✨';if(n.includes('food'))return'🍔';return'🍽️'}
 function showMenu(){
@@ -317,6 +344,7 @@ function showMenu(){
         <option value="cobbla" ${selectedStore==='cobbla'?'selected':''}>Cobbla, Manchester</option>
       </select>
     </div>
+    ${promoHtml()}
     ${hoursHtml()}
     ${deliveryMessageHtml()}
     <div class="cats">${catsHtml}</div>
@@ -325,6 +353,7 @@ function showMenu(){
       <span>${shown.length} item${shown.length===1?'':'s'}</span>
     </div>
     <div class="grid">${itemsHtml}</div>`;
+  paintPromo();startPromo();
 }
 function beginAdd(id){let m=menu.find(x=>x.id===id);if(!m||m.sold_out)return;if(!m.option_groups||!m.option_groups.length)return addConfigured(m,[]);customizing={item:m,selected:{}};(m.option_groups||[]).forEach(g=>customizing.selected[g.id]=[]);renderCustomizer()}
 function calcCustom(){let extra=0,ObjectValues=[];Object.values(customizing.selected).forEach(arr=>arr.forEach(id=>{for(const g of customizing.item.option_groups){let v=g.values.find(x=>x.id===id);if(v){extra+=Number(v.price_delta_jmd||0);ObjectValues.push(v)}}}));return {extra,values:ObjectValues}}
