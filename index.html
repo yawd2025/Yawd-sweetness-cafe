@@ -496,49 +496,76 @@ function chooseDeliveryMethod(method){
   updateCheckoutDeliverySummary();
 }
 function captureDeliveryLocation(btn){
-  if(!navigator.geolocation){chooseDeliveryMethod('address');const status=$('gpsStatus');if(status)status.innerHTML='<b style="color:#a22a1c">⚠️ Live Location is not available in this browser.</b><br><b>No problem — enter an Address / Landmark below instead.</b>';const input=$('deliveryAddress');if(input)setTimeout(()=>input.focus(),100);return}
+  if(!navigator.geolocation){
+    chooseDeliveryMethod('address');
+    const status=$('gpsStatus');
+    if(status)status.innerHTML='<b style="color:#a22a1c">⚠️ Live Location is not available in this browser.</b><br><b>No problem — enter an Address / Landmark below instead.</b>';
+    const input=$('deliveryAddress');if(input)setTimeout(()=>input.focus(),100);return
+  }
+
   let status=$('gpsStatus');
+  const isiPhone=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   if(btn){btn.disabled=true;btn.textContent='📍 Getting your location...'}
-  if(status)status.innerHTML='Waiting for your phone location permission...';
-  navigator.geolocation.getCurrentPosition(
-    async p=>{
-      deliveryMethod='live';
-      deliveryCoords={lat:p.coords.latitude,lng:p.coords.longitude};
-      deliveryQuote=null;
-      try{
-        const q=await getDeliveryQuote();
-        if(status)status.innerHTML='<b style="color:#0c6b43">✅ Live location saved.</b><br>'
-          +'Distance from '+((( $('loc')&&$('loc').value) || selectedStore)==='cobbla'?'Cobbla':'Linstead')+': <b>'+q.distance_km+' km</b><br>'
-          +'Delivery fee: <b>'+money(q.delivery_fee_jmd)+'</b>'
-          +(q.min_order_jmd?'<br>Minimum food order: <b>'+money(q.min_order_jmd)+'</b>':'')
-          +'<br><span class="smallNote">The driver can also use this location for navigation.</span>';
-        if(btn){btn.disabled=false;btn.textContent='✅ Location & Fee Calculated'}
-        updateCheckoutDeliverySummary();
-        const totalBtn=$('placeOrderBtn');if(totalBtn)totalBtn.scrollIntoView({behavior:'smooth',block:'nearest'});
-      }catch(err){
-        deliveryQuote=null;
-        if(status)status.innerHTML='<b style="color:#a22a1c">⚠️ '+esc(err.message)+'</b>';
-        if(btn){btn.disabled=false;btn.textContent='📍 Try Current Location Again'}
-        updateCheckoutDeliverySummary();
-      }
-    },
-    err=>{
-      deliveryCoords=null;deliveryQuote=null;
-      // Do not trap the customer when browser GPS permission fails.
-      // Automatically move them to the Address / Landmark fallback.
-      deliveryMethod='address';
-      const live=$('liveLocationBox'),address=$('addressLocationBox');
-      if(live)live.style.display='none';
-      if(address)address.style.display='block';
-      const reason=err&&err.code===1?'Your browser did not allow location access.':(err&&err.code===3?'Your phone took too long to return a location.':'We could not get your current location.');
-      if(status)status.innerHTML='<b style="color:#a22a1c">⚠️ '+esc(reason)+'</b><br><b>No problem — use Address / Landmark below instead.</b><br><span class="smallNote">Type a nearby business, road, community or landmark, tap Find Address / Landmark, then select the correct result.</span>';
-      if(btn){btn.disabled=false;btn.textContent='📍 Try Live Location Again'}
+  if(status)status.innerHTML=isiPhone
+    ? 'Getting your iPhone location… If asked, tap <b>Allow</b>.'
+    : 'Waiting for your phone location permission...';
+
+  const useLocation=async p=>{
+    deliveryMethod='live';
+    deliveryCoords={lat:p.coords.latitude,lng:p.coords.longitude};
+    deliveryQuote=null;
+    try{
+      const q=await getDeliveryQuote();
+      if(status)status.innerHTML='<b style="color:#0c6b43">✅ Live location saved.</b><br>'
+        +'Distance from '+((( $('loc')&&$('loc').value) || selectedStore)==='cobbla'?'Cobbla':'Linstead')+': <b>'+q.distance_km+' km</b><br>'
+        +'Delivery fee: <b>'+money(q.delivery_fee_jmd)+'</b>'
+        +(q.min_order_jmd?'<br>Minimum food order: <b>'+money(q.min_order_jmd)+'</b>':'')
+        +'<br><span class="smallNote">The driver can also use this location for navigation.</span>';
+      if(btn){btn.disabled=false;btn.textContent='✅ Location & Fee Calculated'}
       updateCheckoutDeliverySummary();
-      const input=$('deliveryAddress');if(input)setTimeout(()=>input.focus(),100);
+      const totalBtn=$('placeOrderBtn');if(totalBtn)totalBtn.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }catch(err){
+      deliveryQuote=null;
+      if(status)status.innerHTML='<b style="color:#a22a1c">⚠️ '+esc(err.message)+'</b>';
+      if(btn){btn.disabled=false;btn.textContent='📍 Try Current Location Again'}
+      updateCheckoutDeliverySummary();
+    }
+  };
+
+  const fallbackToAddress=err=>{
+    deliveryCoords=null;deliveryQuote=null;deliveryMethod='address';
+    const live=$('liveLocationBox'),address=$('addressLocationBox');
+    if(live)live.style.display='none';
+    if(address)address.style.display='block';
+    let reason='We could not get your current location.';
+    if(err&&err.code===1)reason=isiPhone
+      ? 'iPhone did not allow location access. In iPhone Settings, allow location for Safari, then try again — or use Address / Landmark below.'
+      : 'Your browser did not allow location access.';
+    else if(err&&err.code===3)reason='Your phone took too long to return a location.';
+    if(status)status.innerHTML='<b style="color:#a22a1c">⚠️ '+esc(reason)+'</b><br><b>No problem — use Address / Landmark below instead.</b><br><span class="smallNote">Type a nearby business, road, community or landmark, tap Find Address / Landmark, then select the correct result.</span>';
+    if(btn){btn.disabled=false;btn.textContent='📍 Try Live Location Again'}
+    updateCheckoutDeliverySummary();
+    const input=$('deliveryAddress');if(input)setTimeout(()=>input.focus(),100);
+  };
+
+  // iPhone Safari can time out when high-accuracy GPS is requested immediately.
+  // Start with the faster network/cached location. If that fails for a reason
+  // other than permission denial, retry once with high accuracy before falling back.
+  navigator.geolocation.getCurrentPosition(
+    useLocation,
+    firstErr=>{
+      if(firstErr&&firstErr.code===1){fallbackToAddress(firstErr);return}
+      if(status)status.innerHTML='Still locating you… trying GPS once more.';
+      navigator.geolocation.getCurrentPosition(
+        useLocation,
+        fallbackToAddress,
+        {enableHighAccuracy:true,timeout:20000,maximumAge:0}
+      );
     },
-    {enableHighAccuracy:true,timeout:15000,maximumAge:60000}
+    {enableHighAccuracy:false,timeout:10000,maximumAge:300000}
   );
 }
+
 async function searchDeliveryAddress(btn){
   const input=$('deliveryAddress');
   const results=$('addressSearchResults');
