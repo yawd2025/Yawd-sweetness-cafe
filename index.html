@@ -357,11 +357,56 @@ function showMenu(){
 }
 function beginAdd(id){let m=menu.find(x=>x.id===id);if(!m||m.sold_out)return;if(!m.option_groups||!m.option_groups.length)return addConfigured(m,[]);customizing={item:m,selected:{}};(m.option_groups||[]).forEach(g=>customizing.selected[g.id]=[]);renderCustomizer()}
 function calcCustom(){let extra=0,ObjectValues=[];Object.values(customizing.selected).forEach(arr=>arr.forEach(id=>{for(const g of customizing.item.option_groups){let v=g.values.find(x=>x.id===id);if(v){extra+=Number(v.price_delta_jmd||0);ObjectValues.push(v)}}}));return {extra,values:ObjectValues}}
-function chooseSingle(gid,val){customizing.selected[gid]=val?[val]:[];renderCustomizer()}
-function chooseMulti(gid,val,on){let a=customizing.selected[gid]||[];if(on&&!a.includes(val))a.push(val);if(!on)a=a.filter(x=>x!==val);let g=customizing.item.option_groups.find(x=>x.id===gid);if(a.length>Number(g.max_select||99)){alert('Maximum '+g.max_select+' choices.');a=a.slice(0,g.max_select)}customizing.selected[gid]=a;renderCustomizer()}
-function renderCustomizer(){let m=customizing.item,c=calcCustom();$('modal').innerHTML='<div class="ov"><div class="dr">'+(m.image_url?'<img class="thumb" style="height:180px" src="'+esc(m.image_url)+'">':'')+'<span class="tag">CUSTOMIZE</span><h2>'+esc(m.name)+'</h2><p>'+esc(m.description)+'</p>'+(m.option_groups||[]).map(g=>'<div class="optGroup"><b>'+esc(g.name)+(g.required?' *':'')+'</b><div class="muted">'+(g.input_type==='multiple'?'Choose up to '+g.max_select:'Choose one')+'</div>'+(g.input_type==='multiple'?g.values.map(v=>'<label class="checkrow"><input type="checkbox" '+((customizing.selected[g.id]||[]).includes(v.id)?'checked':'')+' onchange="chooseMulti(\''+g.id+'\',\''+v.id+'\',this.checked)"><span>'+esc(v.name)+(Number(v.price_delta_jmd)?' • '+(Number(v.price_delta_jmd)>0?'+':'')+money(v.price_delta_jmd):'')+'</span></label>').join(''):'<select onchange="chooseSingle(\''+g.id+'\',this.value)"><option value="">Choose '+esc(g.name)+'</option>'+g.values.map(v=>'<option value="'+v.id+'" '+((customizing.selected[g.id]||[]).includes(v.id)?'selected':'')+'>'+esc(v.name)+(Number(v.price_delta_jmd)?' • '+(Number(v.price_delta_jmd)>0?'+':'')+money(v.price_delta_jmd):'')+'</option>').join('')+'</select>')+'</div>').join('')+'<div class="row"><span>Total each</span><span class="priceBig">'+money(m.price_jmd+c.extra)+'</span></div><button class="btn" onclick="finishAdd()">Add to Order</button><button class="btn" style="background:#ddd;margin-top:8px" onclick="cancelCustomizer()">Cancel</button></div></div>'}
+// Combo Drink is available only when the optional paid Combo upgrade is selected.
+function comboGroups(m){
+  const groups=m.option_groups||[];
+  const drink=groups.find(g=>/combo\s*drink/i.test(g.name||''));
+  const upgrade=groups.find(g=>/combo/i.test(g.name||'')&&!/drink/i.test(g.name||''));
+  return {upgrade,drink};
+}
+function comboSelected(){
+  if(!customizing)return false;
+  const {upgrade}=comboGroups(customizing.item);
+  if(!upgrade)return false;
+  return (customizing.selected[upgrade.id]||[]).some(id=>{
+    const v=(upgrade.values||[]).find(x=>x.id===id);
+    return v&&!/^(no|none|no combo|regular|without combo|skip|not now|no thanks)$/i.test(String(v.name||'').trim());
+  });
+}
+function enforceComboDrink(){
+  if(!customizing)return;
+  const {upgrade,drink}=comboGroups(customizing.item);
+  if(upgrade&&drink&&!comboSelected())customizing.selected[drink.id]=[];
+}
+function chooseSingle(gid,val){
+  const {drink}=comboGroups(customizing.item);
+  if(drink&&gid===drink.id&&!comboSelected())return;
+  customizing.selected[gid]=val?[val]:[];
+  enforceComboDrink();renderCustomizer();
+}
+function chooseMulti(gid,val,on){
+  const {drink}=comboGroups(customizing.item);
+  if(drink&&gid===drink.id&&!comboSelected())return;
+  let a=customizing.selected[gid]||[];
+  if(on&&!a.includes(val))a.push(val);
+  if(!on)a=a.filter(x=>x!==val);
+  let g=customizing.item.option_groups.find(x=>x.id===gid);
+  if(a.length>Number(g.max_select||99)){alert('Maximum '+g.max_select+' choices.');a=a.slice(0,g.max_select)}
+  customizing.selected[gid]=a;enforceComboDrink();renderCustomizer();
+}
+function renderCustomizer(){
+  enforceComboDrink();
+  let m=customizing.item,c=calcCustom(),{upgrade,drink}=comboGroups(m);
+  $('modal').innerHTML='<div class="ov"><div class="dr">'+(m.image_url?'<img class="thumb" style="height:180px" src="'+esc(m.image_url)+'">':'')+'<span class="tag">CUSTOMIZE</span><h2>'+esc(m.name)+'</h2><p>'+esc(m.description)+'</p>'+(m.option_groups||[]).map(g=>{
+    const locked=!!(upgrade&&drink&&g.id===drink.id&&!comboSelected());
+    return '<div class="optGroup"'+(locked?' style="opacity:.5"':'')+'><b>'+esc(g.name)+(g.required&&!locked?' *':'')+'</b><div class="muted">'+(locked?'Select the Combo upgrade to choose a drink.':g.input_type==='multiple'?'Choose up to '+g.max_select:'Choose one')+'</div>'+(g.input_type==='multiple'?g.values.map(v=>'<label class="checkrow"><input type="checkbox" '+(locked?'disabled ':'')+((customizing.selected[g.id]||[]).includes(v.id)?'checked':'')+' onchange="chooseMulti(\''+g.id+'\',\''+v.id+'\',this.checked)"><span>'+esc(v.name)+(Number(v.price_delta_jmd)?' • '+(Number(v.price_delta_jmd)>0?'+':'')+money(v.price_delta_jmd):'')+'</span></label>').join(''):'<select '+(locked?'disabled ':'')+'onchange="chooseSingle(\''+g.id+'\',this.value)"><option value="">Choose '+esc(g.name)+'</option>'+g.values.map(v=>'<option value="'+v.id+'" '+((customizing.selected[g.id]||[]).includes(v.id)?'selected':'')+'>'+esc(v.name)+(Number(v.price_delta_jmd)?' • '+(Number(v.price_delta_jmd)>0?'+':'')+money(v.price_delta_jmd):'')+'</option>').join('')+'</select>')+'</div>';
+  }).join('')+'<div class="row"><span>Total each</span><span class="priceBig">'+money(m.price_jmd+c.extra)+'</span></div><button class="btn" onclick="finishAdd()">Add to Order</button><button class="btn" style="background:#ddd;margin-top:8px" onclick="cancelCustomizer()">Cancel</button></div></div>';
+}
 function finishAdd(){
+  enforceComboDrink();
+  const {upgrade,drink}=comboGroups(customizing.item);
   for(const g of customizing.item.option_groups){
+    if(upgrade&&drink&&g.id===drink.id&&!comboSelected())continue;
     let n=(customizing.selected[g.id]||[]).length,min=g.required?Math.max(1,Number(g.min_select||1)):Number(g.min_select||0);
     if(n<min){alert('Please choose '+g.name+'.');return}
   }
